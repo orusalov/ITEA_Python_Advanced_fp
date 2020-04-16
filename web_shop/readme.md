@@ -1,0 +1,9 @@
+Entities:
+    Product
+    Category
+    Cart
+    News
+    Texts
+    Client
+    Orders
+    Optional[Billing]
