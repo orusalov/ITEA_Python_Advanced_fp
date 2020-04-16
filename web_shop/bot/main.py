@@ -43,7 +43,7 @@ def categories_handler(message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('category'))
 def category_handler(call):
-    category_id = ''.join(call.data.split('_')[1:])
+    category_id = '_'.join(call.data.split('_')[1:])
     category = Category.objects.get(id=category_id)
     kb = InlineKeyboardMarkup(row_width=2)
 
