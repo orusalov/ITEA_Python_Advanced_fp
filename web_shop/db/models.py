@@ -1,6 +1,6 @@
 import mongoengine as me
 import datetime
-from db_config import DB_CONFIG
+from .db_config import DB_CONFIG
 from typing import Tuple
 
 me.connect(**DB_CONFIG)
