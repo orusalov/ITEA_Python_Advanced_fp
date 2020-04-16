@@ -115,5 +115,5 @@ def set_webhook():
     time.sleep(1)
     bot.set_webhook(
         url='https://35.246.165.155/tg',
-        certificate=open('web_cert.pem', 'r')
+        certificate=open('webhook_cert.pem', 'r')
     )
