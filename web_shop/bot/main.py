@@ -208,11 +208,23 @@ def category_handler(call):
 
         if category.subcategories:
             categories = category.subcategories
-            buttons = [InlineKeyboardButton(text=cat.title, callback_data=f'{CALLBACK_PREFIXES["category"]}{cat.id}') for cat in categories]
 
             callback_data = category.parent.id if category.parent else CALLBACK_PREFIXES['root']
 
-            buttons.append(InlineKeyboardButton(text=TEXTS['back'], callback_data=f'{CALLBACK_PREFIXES["category"]}{callback_data}'))
+            buttons = [
+                InlineKeyboardButton(
+                    text=TEXTS['back'],
+                    callback_data=f'{CALLBACK_PREFIXES["category"]}{callback_data}'
+                )
+            ]
+
+            buttons.extend(
+                [
+                    InlineKeyboardButton(
+                        text=cat.title,
+                        callback_data=f'{CALLBACK_PREFIXES["category"]}{cat.id}') for cat in categories
+                ]
+            )
 
             message_id = call.message.message_id if call.message.text else None
 
