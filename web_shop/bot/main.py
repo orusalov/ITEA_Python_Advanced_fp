@@ -103,7 +103,7 @@ def send_product_preview(product, chat_id, send_prev_button=False, send_next_but
 
     caption=f'{product.title}\n\n' \
         f'{f"<s>{product.price}</s> <b>" if product.discount_perc else ""}{product.get_price()}₴' \
-        f'{"</b>" if product.discount_perc else ""}'
+        f'{"</b> 🔥" if product.discount_perc else ""}'
 
     bot.send_photo(
         chat_id=chat_id,
@@ -129,7 +129,7 @@ def send_product_full_view(product, chat_id):
     discount_txt = TEXTS['discount']
 
     price_str = f'{f"<s>{product.price}</s> <b>" if product.discount_perc else ""}{product.get_price()}₴' \
-        f'{f"</b> ({discount_txt}: {product.discount_perc}%)" if product.discount_perc else ""}'
+        f'{f"</b> 🔥({discount_txt}: {product.discount_perc}%)" if product.discount_perc else ""}'
 
     caption = [
         f'<b>{product.title}</b>',
@@ -175,8 +175,11 @@ def process_webhook():
 @bot.message_handler(commands=['start'])
 def start(message):
     buttons = [KeyboardButton(value) for value in START_KB.values()]
-    print(message.chat.id)
-    bot.se_reply_keyboard(buttons=buttons, chat_id=message.chat.id, text=TEXTS['greeting_message'], parse_mode='html')
+    bot.se_reply_keyboard(buttons=buttons,
+                          chat_id=message.chat.id,
+                          text=f"{message.chat.first_name}, {TEXTS['greeting_message']}",
+                          parse_mode='html'
+                          )
 
 
 @bot.message_handler(func=lambda message: message.text == START_KB['categories'])
