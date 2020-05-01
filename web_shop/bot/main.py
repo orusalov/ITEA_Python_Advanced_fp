@@ -66,11 +66,13 @@ def send_product_preview(product, chat_id, send_prev_button=False, send_next_but
 
     # kb.add(*buttons)
 
+    return_to_category = product.category.parent.id if product.category.parent else CALLBACK_PREFIXES['root']
+
     first_row = [
             InlineKeyboardButton(text=TEXTS['details'],
                                  callback_data=f'{CALLBACK_PREFIXES["product"]}{product.id}').to_dic(),
             InlineKeyboardButton(text=TEXTS['back_to_category'],
-                                 callback_data=f'{CALLBACK_PREFIXES["category"]}{product.category.parent.id}').to_dic(),
+                                 callback_data=f'{CALLBACK_PREFIXES["category"]}{return_to_category}').to_dic(),
             InlineKeyboardButton(text=TEXTS['add_to_cart'],
                                  callback_data=f'{CALLBACK_PREFIXES["to_cart"]}{product.id}').to_dic()
         ]
@@ -99,12 +101,63 @@ def send_product_preview(product, chat_id, send_prev_button=False, send_next_but
     if third_row:
         kb.keyboard.append(third_row)
 
+    caption=f'{product.title}\n\n' \
+        f'{f"<s>{product.price}</s> <b>" if product.discount_perc else ""}{product.get_price()}₴' \
+        f'{"</b>" if product.discount_perc else ""}'
+
     bot.send_photo(
         chat_id=chat_id,
         photo=product.image.read(),
-        caption=f'{TEXTS["price"]} - {product.price}, {product.description}',
+        caption=caption,
         disable_notification=True,
-        reply_markup=kb
+        reply_markup=kb,
+        parse_mode = 'html'
+    )
+    product.image.seek(0)
+
+def send_product_full_view(product, chat_id):
+    kb = InlineKeyboardMarkup()
+    first_row = [
+            InlineKeyboardButton(text=TEXTS['back'],
+                                 callback_data=f'{CALLBACK_PREFIXES["next_product"]}{product.id}').to_dic(),
+            InlineKeyboardButton(text=TEXTS['add_to_cart'],
+                                 callback_data=f'{CALLBACK_PREFIXES["to_cart"]}{product.id}').to_dic()
+        ]
+
+    kb.keyboard.append(first_row)
+
+    discount_txt = TEXTS['discount']
+
+    price_str = f'{f"<s>{product.price}</s> <b>" if product.discount_perc else ""}{product.get_price()}₴' \
+        f'{f"</b> ({discount_txt}: {product.discount_perc}%)" if product.discount_perc else ""}'
+
+    caption = [
+        f'<b>{product.title}</b>',
+        product.description,
+        '',
+        price_str
+    ]
+
+    if product.characteristics:
+        characs = {'height', 'width', 'depth', 'weight'}
+        patrs = product.characteristics._fields
+
+        characs = set(patrs.keys()) & characs
+
+        nl = '\n   '
+        dimensions = f"{nl}{nl.join([f'{TEXTS[k]}: {patrs[k]}' for k in characs])}"
+
+        caption.insert(2, f'{TEXTS["characteristics"]}:\n{dimensions}')
+
+
+
+    bot.send_photo(
+        chat_id=chat_id,
+        photo=product.image.read(),
+        caption='\n'.join(caption),
+        disable_notification=True,
+        reply_markup=kb,
+        parse_mode='html'
     )
     product.image.seek(0)
 
@@ -123,7 +176,7 @@ def process_webhook():
 def start(message):
     buttons = [KeyboardButton(value) for value in START_KB.values()]
     print(message.chat.id)
-    bot.se_reply_keyboard(buttons=buttons, chat_id=message.chat.id, text=TEXTS['greeting_message'])
+    bot.se_reply_keyboard(buttons=buttons, chat_id=message.chat.id, text=TEXTS['greeting_message'], parse_mode='html')
 
 
 @bot.message_handler(func=lambda message: message.text == START_KB['categories'])
@@ -131,7 +184,8 @@ def categories_handler(message):
     bot.se_inline_keyboard(
         chat_id=message.chat.id,
         text=TEXTS['categories_message'],
-        buttons=root_categories_buttons()
+        buttons=root_categories_buttons(),
+        parse_mode='html'
     )
 
 
@@ -184,10 +238,13 @@ def category_handler(call):
             )
 
 
-@bot.callback_query_handler(func=lambda call: call.data == CALLBACK_PREFIXES["next_product"])
+@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PREFIXES["next_product"]))
 def next_product(call):
-    product = current_straight_product_list.pop()
-    current_backward_product_list.append(product)
+    if call.data != CALLBACK_PREFIXES["next_product"]:
+        product = Product.objects.get(id=call.data[len(CALLBACK_PREFIXES["next_product"]):])
+    else:
+        product = current_straight_product_list.pop()
+        current_backward_product_list.append(product)
 
     send_product_preview(
         product=product,
@@ -219,8 +276,10 @@ def all_product(call):
         )
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PREFIXES["product"]))
-def details_cart(call):
-    pass
+def detailed_product_view(call):
+    product_id = call.data[len(CALLBACK_PREFIXES["product"]):]
+    product = Product.objects.get(id=product_id)
+    send_product_full_view(product=product, chat_id=call.message.chat.id)
 
 
 @bot.message_handler(func=lambda message: message.text == START_KB['news'])

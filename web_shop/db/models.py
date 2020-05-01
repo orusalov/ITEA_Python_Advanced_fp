@@ -9,6 +9,7 @@ me.connect(**DB_CONFIG)
 class Characteristics(me.EmbeddedDocument):
     height = me.DecimalField()
     width = me.DecimalField()
+    depth = me.DecimalField()
     weight = me.DecimalField()
 
 
