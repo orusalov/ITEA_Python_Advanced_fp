@@ -63,6 +63,7 @@ class News(me.Document):
     title = me.StringField(min_length=2, max_length=512)
     body = me.StringField(min_length=2)
     pub_date = me.DateTimeField(default=datetime.datetime.now())
+    image = me.FileField()
 
 
 class Texts(me.Document):
