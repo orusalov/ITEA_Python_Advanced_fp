@@ -29,5 +29,6 @@ TEXTS = {
     '+1': '+1',
     'quantity_short': 'Кол-во',
     'subsum': 'Сумма',
-    'total_cost': 'Итого'
+    'total_cost': 'Итого',
+    'product_view': '🔍'
 }

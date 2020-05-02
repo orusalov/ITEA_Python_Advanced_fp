@@ -246,8 +246,8 @@ def cart_handler(message):
             f'{TEXTS["subsum"]}: <b>{item.item_subsum}₴</b>'
         buttons = []
         buttons.append(InlineKeyboardButton(
-            text=TEXTS['+1'],
-            callback_data=f"{CALLBACK_PREFIXES['cart_item_modification']}{CALLBACK_PREFIXES['add']}{item.product.id}"
+            text=TEXTS['product_view'],
+            callback_data=f"{CALLBACK_PREFIXES['next_product']}{item.product.id}"
         ))
         if item.quantity > 1:
             buttons.append(InlineKeyboardButton(
