@@ -2,6 +2,7 @@ import mongoengine as me
 import datetime
 from .db_config import DB_CONFIG
 from typing import Tuple
+from mongoengine import DoesNotExist
 
 me.connect(**DB_CONFIG)
 
@@ -66,7 +67,7 @@ class News(me.Document):
     pub_date = me.DateTimeField(default=datetime.datetime.now())
     image = me.FileField()
 
-
+# WTF???
 class Texts(me.Document):
     choices = (
         ('Greeting', 'Greeting'),
@@ -86,44 +87,76 @@ class Customer(me.Document):
     last_name = me.StringField(min_lenght=1, max_length=256)
     age = me.IntField(min_value=12, max_value=99)
 
+    current_straight_product_list = me.ListField()
+    current_backward_product_list = me.ListField()
+
     def get_or_create_current_cart(self) -> Tuple[bool, 'Cart']:
         created = False
-        cart = Cart.objects.get(customer=self, is_archived=False)
+        try:
+            cart = Cart.objects.get(customer=self, is_archived=False)
+        except DoesNotExist:
+            cart = Cart.objects.create(customer=self)
 
-        if cart:
-            return created, cart
-        else:
-            created = True
-            return created, Cart.objects.create(customer=self)
+        return cart
 
 
 class CartItem(me.EmbeddedDocument):
     product = me.ReferenceField('Product')
     quantity = me.IntField(min_value=1, default=1)
+    is_archived = me.BooleanField(default=False)
+    _order_product_price = me.IntField()
 
     @property
-    def price(self):
-        return self.product.get_price() * self.quantity
+    def product_price(self):
+        if self.is_archived:
+            return self._order_product_price
+        else:
+            return self.product.get_price()
 
+    @property
+    def item_subsum(self):
+        return self.product_price * self.quantity
 
+    def __contains__(self, item):
+        return self.product == item.product
+
+    def __eq__(self, other):
+        return self.product == other.product
+
+    def archive(self):
+        self._order_product_price = self.product.get_price()
+        self.is_archived = True
+        self.save()
 
 
 class Cart(me.Document):
     customer = me.ReferenceField(Customer)
-    cart_items = me.EmbeddedDocumentListField(CartItem)
+    items = me.EmbeddedDocumentListField(CartItem)
     is_archived = me.BooleanField(default=False)
+
+    @property
+    def total_cost(self):
+        return sum([cart_item.item_subsum for cart_item in self.items])
+
+    @property
+    def total_items(self):
+        return sum([cart_item.quantity for cart_item in self.items])
 
     def add_item(self, product: Product):
         cart_item = CartItem()
         cart_item.product = product
 
-        if cart_item in self.cart_items:
-            self.cart_items[self.cart_items.index(cart_item)].quantity += 1
+        if cart_item in self.items:
+            self.items[self.items.index(cart_item)].quantity += 1
         else:
-            self.cart_items.append(cart_item)
+            self.items.append(cart_item)
 
         self.save()
 
     def archive(self):
+
+        for order_item in self.items:
+            order_item.archive()
+
         self.is_archived = True
         self.save()
