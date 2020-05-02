@@ -10,6 +10,8 @@ from telebot.types import (
     Update
 )
 
+from time import sleep
+
 from .keyboards import START_KB, TEXTS
 from flask import Flask
 from flask import request, abort
@@ -28,7 +30,9 @@ CALLBACK_PARTS = {
     'add': 'add_',
     'del': 'del_',
     'cart_delete': 'cart_delete',
-    'order_proceed': 'order_proceed'
+    'order_proceed': 'order_proceed',
+    'cart_delete_approval': 'cart_delete_approval',
+    'cart_delete_cancelation': 'cart_delete_cancelation'
 }
 
 bot = WebShopBot(TOKEN)
@@ -479,6 +483,30 @@ def detailed_product_view(call):
 
     kb = get_updated_reply_markup(customer)
     bot.send_message(text=TEXTS['added_to_cart'], chat_id=call.message.chat.id, reply_markup=kb)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS['cart_delete']))
+def cart_delete(call):
+    if call.data == CALLBACK_PARTS['cart_delete']:
+        kb = InlineKeyboardMarkup()
+        buttons = [
+            InlineKeyboardButton(text=TEXTS['yes'], callback_data=CALLBACK_PARTS['cart_delete_approval']),
+            InlineKeyboardButton(text=TEXTS['cancel'], callback_data=CALLBACK_PARTS['cart_delete_cancelation'])
+        ]
+        kb.row(*buttons)
+
+        bot.send_message(text=TEXTS['cart_delete_approval'], chat_id=call.message.chat.id, reply_markup=kb)
+    elif call.data == CALLBACK_PARTS['cart_delete_approval']:
+
+        customer = get_customer(call.from_user.id, call.from_user.username)
+        customer.get_or_create_current_cart().del_all_items()
+
+        kb = get_updated_reply_markup(customer)
+        bot.send_message(text=TEXTS['cart_deleted'], chat_id=call.message.chat.id, reply_markup=kb)
+
+    elif call.data == CALLBACK_PARTS['cart_delete_cancelation']:
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+
 
 
 @bot.message_handler(func=lambda message: message.text == START_KB['news'])

@@ -33,5 +33,9 @@ TEXTS = {
     'product_view': '🔍',
     'start_cart_text': 'Корзина имеет {} позиции',
     'cart_delete': 'Удалить корзину',
-    'order_proceed': 'Оформить заказ'
+    'cart_deleted': 'Корзина удалена',
+    'order_proceed': 'Оформить заказ',
+    'yes': 'Да',
+    'cancel': 'Отмена',
+    'cart_delete_approval': 'Вы уверены, что хотите удалить корзину?'
 }
