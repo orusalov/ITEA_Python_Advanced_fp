@@ -126,13 +126,14 @@ class CartItem(me.EmbeddedDocument):
     def archive(self):
         self._order_product_price = self.product.get_price()
         self.is_archived = True
-        self.save()
 
 
 class Cart(me.Document):
     customer = me.ReferenceField(Customer)
     items = me.EmbeddedDocumentListField(CartItem)
     is_archived = me.BooleanField(default=False)
+
+    _active_sum_message_id = me.IntField()
 
     @property
     def total_cost(self):
@@ -141,6 +142,10 @@ class Cart(me.Document):
     @property
     def total_items(self):
         return sum([cart_item.quantity for cart_item in self.items])
+
+    @property
+    def distinct_items(self):
+        return len(self.items)
 
     def add_item(self, product: Product):
         cart_item = CartItem()
@@ -151,6 +156,36 @@ class Cart(me.Document):
         else:
             self.items.append(cart_item)
 
+        self.save()
+        return self.items[self.items.index(cart_item)]
+
+    def sub_item(self, product: Product):
+        search_item = CartItem()
+        search_item.product = product
+
+        if search_item in self.items:
+            cart_item = self.items[self.items.index(search_item)]
+            cart_item.quantity -= 1
+
+            if cart_item.quantity == 0:
+                cart_item = None
+                self.del_item(product)
+
+            self.save()
+
+        return cart_item
+
+    def del_item(self, product: Product):
+        cart_item = CartItem()
+        cart_item.product = product
+
+        if cart_item in self.items:
+            del self.items[self.items.index(cart_item)]
+
+        self.save()
+
+    def del_all_items(self):
+        self.items = []
         self.save()
 
     def archive(self):

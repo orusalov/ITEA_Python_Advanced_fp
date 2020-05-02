@@ -15,7 +15,7 @@ from flask import Flask
 from flask import request, abort
 from mongoengine import DoesNotExist
 
-CALLBACK_PREFIXES = {
+CALLBACK_PARTS = {
     'category': 'category_',
     'product': 'product_',
     'root': 'root',
@@ -26,7 +26,9 @@ CALLBACK_PREFIXES = {
     'cart_item_modification': 'cart_item_modification_',
     'sub': 'sub_',
     'add': 'add_',
-    'del': 'del_'
+    'del': 'del_',
+    'cart_delete': 'cart_delete',
+    'order_proceed': 'order_proceed'
 }
 
 bot = WebShopBot(TOKEN)
@@ -77,32 +79,32 @@ def send_product_preview(product, chat_id, send_prev_button=False, send_next_but
 
     # kb.add(*buttons)
 
-    return_to_category = product.category.parent.id if product.category.parent else CALLBACK_PREFIXES['root']
+    return_to_category = product.category.parent.id if product.category.parent else CALLBACK_PARTS['root']
 
     first_row = [
         InlineKeyboardButton(text=TEXTS['details'],
-                             callback_data=f'{CALLBACK_PREFIXES["product"]}{product.id}'),
+                             callback_data=f'{CALLBACK_PARTS["product"]}{product.id}'),
         InlineKeyboardButton(text=TEXTS['back_to_category'],
-                             callback_data=f'{CALLBACK_PREFIXES["category"]}{return_to_category}'),
+                             callback_data=f'{CALLBACK_PARTS["category"]}{return_to_category}'),
         InlineKeyboardButton(text=TEXTS['add_to_cart'],
-                             callback_data=f'{CALLBACK_PREFIXES["to_cart"]}{product.id}')
+                             callback_data=f'{CALLBACK_PARTS["to_cart"]}{product.id}')
     ]
 
     second_row = []
 
     if send_prev_button:
         second_row.append(InlineKeyboardButton(text=TEXTS['previous'],
-                                               callback_data=f'{CALLBACK_PREFIXES["previous_product"]}'))
+                                               callback_data=f'{CALLBACK_PARTS["previous_product"]}'))
 
     if send_next_button:
         second_row.append(InlineKeyboardButton(text=TEXTS['next'],
-                                               callback_data=f'{CALLBACK_PREFIXES["next_product"]}'))
+                                               callback_data=f'{CALLBACK_PARTS["next_product"]}'))
 
     third_row = []
 
     if send_all_products_button:
         third_row.append(InlineKeyboardButton(text=TEXTS['send_all_products'],
-                                              callback_data=f'{CALLBACK_PREFIXES["all_products"]}'))
+                                              callback_data=f'{CALLBACK_PARTS["all_products"]}'))
 
     kb.row(*first_row)
 
@@ -131,9 +133,9 @@ def send_product_full_view(product, chat_id):
     kb = InlineKeyboardMarkup()
     first_row = [
         InlineKeyboardButton(text=TEXTS['back'],
-                             callback_data=f'{CALLBACK_PREFIXES["next_product"]}{product.id}'),
+                             callback_data=f'{CALLBACK_PARTS["next_product"]}{product.id}'),
         InlineKeyboardButton(text=TEXTS['add_to_cart'],
-                             callback_data=f'{CALLBACK_PREFIXES["to_cart"]}{product.id}')
+                             callback_data=f'{CALLBACK_PARTS["to_cart"]}{product.id}')
     ]
 
     kb.row(*first_row)
@@ -181,8 +183,7 @@ def get_customer(user_id, username):
     return customer
 
 
-def get_updated_reply_markup(user_id, username):
-    customer = get_customer(user_id, username)
+def get_updated_reply_markup(customer):
 
     buttons = []
     for key, value in START_KB.items():
@@ -195,6 +196,72 @@ def get_updated_reply_markup(user_id, username):
     kb.add(*buttons)
 
     return kb
+
+
+def get_cart_item_kb_and_text(item):
+    text = f'<b>{item.product.title}</b>, ' \
+        f'{TEXTS["price"]}: <b>{item.product_price}₴</b>, ' \
+        f'{TEXTS["quantity_short"]}: <b>{item.quantity}</b>, ' \
+        f'{TEXTS["subsum"]}: <b>{item.item_subsum}₴</b>'
+    buttons = []
+    buttons.append(InlineKeyboardButton(
+        text=TEXTS['product_view'],
+        callback_data=f"{CALLBACK_PARTS['product']}{item.product.id}"
+    ))
+    if item.quantity > 1:
+        buttons.append(InlineKeyboardButton(
+            text=TEXTS['-1'],
+            callback_data=f"{CALLBACK_PARTS['cart_item_modification']}" \
+                f"{CALLBACK_PARTS['sub']}" \
+                f"{item.product.id}"
+        ))
+    buttons.append(InlineKeyboardButton(
+        text=TEXTS['+1'],
+        callback_data=f"{CALLBACK_PARTS['cart_item_modification']}{CALLBACK_PARTS['add']}{item.product.id}"
+    ))
+    buttons.append(InlineKeyboardButton(
+        text=TEXTS['delete_item'],
+        callback_data=f"{CALLBACK_PARTS['cart_item_modification']}{CALLBACK_PARTS['del']}{item.product.id}"
+    ))
+
+    kb = InlineKeyboardMarkup()
+    kb.row(*buttons)
+
+    return kb, text
+
+def se_total_sum(cart, chat_id, is_edit=False):
+    kb = InlineKeyboardMarkup()
+    buttons = [
+        InlineKeyboardButton(text=TEXTS['cart_delete'], callback_data=CALLBACK_PARTS['cart_delete']),
+        InlineKeyboardButton(text=TEXTS['order_proceed'], callback_data=CALLBACK_PARTS['order_proceed'])
+    ]
+    kb.row(*buttons)
+
+    final_message = f"{TEXTS['total_cost']}: <b>{cart.total_cost}₴</b>"
+    if not cart.items:
+        final_message = TEXTS['no_cart_items']
+        kb = None
+
+    if is_edit:
+        bot.edit_message_text(
+            text=final_message,
+            chat_id=chat_id,
+            message_id=cart._active_sum_message_id,
+            reply_markup=kb,
+            parse_mode='html'
+        )
+
+    else:
+        sum_message_id = bot.send_message(
+                            chat_id=chat_id,
+                            text=final_message,
+                            reply_markup=kb,
+                            parse_mode='html',
+                            disable_notification=True
+                        ).message_id
+
+        cart._active_sum_message_id = sum_message_id
+        cart.save()
 
 
 @app.route('/', methods=['POST'])
@@ -210,7 +277,8 @@ def process_webhook():
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    kb = get_updated_reply_markup(message.from_user.id, username=message.from_user.username)
+    customer = get_customer(message.from_user.id, username=message.from_user.username)
+    kb = get_updated_reply_markup(customer)
 
     bot.send_message(reply_markup=kb,
                      chat_id=message.chat.id,
@@ -232,60 +300,24 @@ def categories_handler(message):
 @bot.message_handler(regexp="^" + START_KB['cart'].format('\(\d+\)') + "$")
 def cart_handler(message):
     customer = get_customer(message.from_user.id, message.from_user.username)
-
     cart = customer.get_or_create_current_cart()
-
-    final_message = f"{TEXTS['total_cost']}: <b>{cart.total_cost}₴</b>"
-    if not cart.items:
-        final_message = TEXTS['no_cart_items']
+    kb = get_updated_reply_markup(customer)
+    start_message_text = TEXTS['start_cart_text'].format(cart.distinct_items)
+    bot.send_message(chat_id=message.chat.id, text=start_message_text, reply_markup=kb)
 
     for item in cart.items:
-        text = f'<b>{item.product.title}</b>, ' \
-            f'{TEXTS["price"]}: <b>{item.product_price}₴</b>, ' \
-            f'{TEXTS["quantity_short"]}: <b>{item.quantity}</b>, ' \
-            f'{TEXTS["subsum"]}: <b>{item.item_subsum}₴</b>'
-        buttons = []
-        buttons.append(InlineKeyboardButton(
-            text=TEXTS['product_view'],
-            callback_data=f"{CALLBACK_PREFIXES['next_product']}{item.product.id}"
-        ))
-        if item.quantity > 1:
-            buttons.append(InlineKeyboardButton(
-                text=TEXTS['-1'],
-                callback_data=f"{CALLBACK_PREFIXES['cart_item_modification']}" \
-                f"{CALLBACK_PREFIXES['sub']}" \
-                f"{item.product.id}"
-            ))
-        buttons.append(InlineKeyboardButton(
-            text=TEXTS['+1'],
-            callback_data=f"{CALLBACK_PREFIXES['cart_item_modification']}{CALLBACK_PREFIXES['add']}{item.product.id}"
-        ))
-        buttons.append(InlineKeyboardButton(
-            text=TEXTS['delete_item'],
-            callback_data=f"{CALLBACK_PREFIXES['cart_item_modification']}{CALLBACK_PREFIXES['del']}{item.product.id}"
-        ))
-
-        kb = InlineKeyboardMarkup()
-        kb.row(*buttons)
+        kb, text = get_cart_item_kb_and_text(item)
 
         bot.send_message(text=text, reply_markup=kb, chat_id=message.chat.id, parse_mode='html')
 
-    kb = get_updated_reply_markup(message.from_user.id, message.from_user.username)
-
-    bot.send_message(
-        chat_id=message.chat.id,
-        text=final_message,
-        reply_markup=kb,
-        parse_mode='html',
-        disable_notification=True
-    )
+    se_total_sum(cart=cart, chat_id=message.chat.id)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PREFIXES['category']))
+@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS['category']))
 def category_handler(call):
-    category_id = call.data[len(CALLBACK_PREFIXES['category']):]
+    category_id = call.data[len(CALLBACK_PARTS['category']):]
 
-    if category_id == CALLBACK_PREFIXES['root']:
+    if category_id == CALLBACK_PARTS['root']:
         bot.se_inline_keyboard(
             chat_id=call.message.chat.id,
             text=TEXTS['categories_message'],
@@ -298,12 +330,12 @@ def category_handler(call):
         if category.subcategories:
             categories = category.subcategories
 
-            callback_data = category.parent.id if category.parent else CALLBACK_PREFIXES['root']
+            callback_data = category.parent.id if category.parent else CALLBACK_PARTS['root']
 
             buttons = [
                 InlineKeyboardButton(
                     text=TEXTS['back'],
-                    callback_data=f'{CALLBACK_PREFIXES["category"]}{callback_data}'
+                    callback_data=f'{CALLBACK_PARTS["category"]}{callback_data}'
                 )
             ]
 
@@ -311,7 +343,7 @@ def category_handler(call):
                 [
                     InlineKeyboardButton(
                         text=cat.title,
-                        callback_data=f'{CALLBACK_PREFIXES["category"]}{cat.id}') for cat in categories
+                        callback_data=f'{CALLBACK_PARTS["category"]}{cat.id}') for cat in categories
                 ]
             )
 
@@ -344,11 +376,53 @@ def category_handler(call):
             )
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PREFIXES["next_product"]))
+@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS["cart_item_modification"]))
+def cart_modification_from_cart(call):
+    customer = get_customer(call.from_user.id, call.from_user.username)
+    cart = customer.get_or_create_current_cart()
+
+    decision_call = call.data[len(CALLBACK_PARTS["cart_item_modification"]):]
+
+    if decision_call.startswith(CALLBACK_PARTS['add']):
+        product = Product.objects.get(id=decision_call[len(CALLBACK_PARTS["add"]):])
+
+        item = cart.add_item(product=product)
+
+        reply_markup, text = get_cart_item_kb_and_text(item)
+
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                              text=text, reply_markup=reply_markup, parse_mode='html')
+
+        se_total_sum(cart=cart, chat_id=call.message.chat.id, is_edit=True)
+    elif decision_call.startswith(CALLBACK_PARTS['sub']):
+        product = Product.objects.get(id=decision_call[len(CALLBACK_PARTS["sub"]):])
+
+        item = cart.sub_item(product=product)
+
+        if item:
+            reply_markup, text = get_cart_item_kb_and_text(item)
+
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                  text=text, reply_markup=reply_markup, parse_mode='html')
+
+            se_total_sum(cart=cart, chat_id=call.message.chat.id, is_edit=True)
+        else:
+            bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+            se_total_sum(cart=cart, chat_id=call.message.chat.id, is_edit=True)
+    elif decision_call.startswith(CALLBACK_PARTS['del']):
+        product = Product.objects.get(id=decision_call[len(CALLBACK_PARTS["del"]):])
+
+        cart.del_item(product=product)
+
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+        se_total_sum(cart=cart, chat_id=call.message.chat.id, is_edit=True)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS["next_product"]))
 def next_product(call):
     customer = get_customer(call.from_user.id, call.from_user.username)
-    if call.data != CALLBACK_PREFIXES["next_product"]:
-        product = Product.objects.get(id=call.data[len(CALLBACK_PREFIXES["next_product"]):])
+    if call.data != CALLBACK_PARTS["next_product"]:
+        product = Product.objects.get(id=call.data[len(CALLBACK_PARTS["next_product"]):])
     else:
         product = customer.current_straight_product_list.pop()
         customer.current_backward_product_list.append(product)
@@ -363,7 +437,7 @@ def next_product(call):
     )
 
 
-@bot.callback_query_handler(func=lambda call: call.data == CALLBACK_PREFIXES["previous_product"])
+@bot.callback_query_handler(func=lambda call: call.data == CALLBACK_PARTS["previous_product"])
 def prev_product(call):
     customer = get_customer(call.from_user.id, call.from_user.username)
     customer.current_straight_product_list.append(customer.current_backward_product_list.pop())
@@ -378,7 +452,7 @@ def prev_product(call):
     )
 
 
-@bot.callback_query_handler(func=lambda call: call.data == CALLBACK_PREFIXES["all_products"])
+@bot.callback_query_handler(func=lambda call: call.data == CALLBACK_PARTS["all_products"])
 def all_product(call):
     customer = get_customer(call.from_user.id, call.from_user.username)
     for product in (*customer.current_backward_product_list[::-1], *customer.current_straight_product_list[::-1]):
@@ -389,21 +463,21 @@ def all_product(call):
         )
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PREFIXES["product"]))
+@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS["product"]))
 def detailed_product_view(call):
-    product_id = call.data[len(CALLBACK_PREFIXES["product"]):]
+    product_id = call.data[len(CALLBACK_PARTS["product"]):]
     product = Product.objects.get(id=product_id)
     send_product_full_view(product=product, chat_id=call.message.chat.id)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PREFIXES["to_cart"]))
+@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS["to_cart"]))
 def detailed_product_view(call):
     customer = get_customer(call.from_user.id, call.from_user.username)
-    product_id = call.data[len(CALLBACK_PREFIXES["to_cart"]):]
+    product_id = call.data[len(CALLBACK_PARTS["to_cart"]):]
     product = Product.objects.get(id=product_id)
     customer.get_or_create_current_cart().add_item(product=product)
 
-    kb = get_updated_reply_markup(call.from_user.id, username=call.from_user.username)
+    kb = get_updated_reply_markup(customer)
     bot.send_message(text=TEXTS['added_to_cart'], chat_id=call.message.chat.id, reply_markup=kb)
 
 

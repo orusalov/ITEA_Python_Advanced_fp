@@ -30,5 +30,8 @@ TEXTS = {
     'quantity_short': 'Кол-во',
     'subsum': 'Сумма',
     'total_cost': 'Итого',
-    'product_view': '🔍'
+    'product_view': '🔍',
+    'start_cart_text': 'Корзина имеет {} позиции',
+    'cart_delete': 'Удалить корзину',
+    'order_proceed': 'Оформить заказ'
 }
