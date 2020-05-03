@@ -188,7 +188,6 @@ def get_customer(user_id, username):
 
 
 def get_updated_reply_markup(customer):
-
     buttons = []
     for key, value in START_KB.items():
         if key != 'cart':
@@ -202,11 +201,15 @@ def get_updated_reply_markup(customer):
     return kb
 
 
-def get_cart_item_kb_and_text(item):
+def get_cart_item_text(item):
     text = f'<b>{item.product.title}</b>, ' \
         f'{TEXTS["price"]}: <b>{item.product_price}₴</b>, ' \
         f'{TEXTS["quantity_short"]}: <b>{item.quantity}</b>, ' \
         f'{TEXTS["subsum"]}: <b>{item.item_subsum}₴</b>'
+    return text
+
+
+def get_cart_item_kb(item):
     buttons = []
     buttons.append(InlineKeyboardButton(
         text=TEXTS['product_view'],
@@ -231,7 +234,8 @@ def get_cart_item_kb_and_text(item):
     kb = InlineKeyboardMarkup()
     kb.row(*buttons)
 
-    return kb, text
+    return kb
+
 
 def se_total_sum(cart, chat_id, is_edit=False):
     kb = InlineKeyboardMarkup()
@@ -257,12 +261,12 @@ def se_total_sum(cart, chat_id, is_edit=False):
 
     else:
         sum_message_id = bot.send_message(
-                            chat_id=chat_id,
-                            text=final_message,
-                            reply_markup=kb,
-                            parse_mode='html',
-                            disable_notification=True
-                        ).message_id
+            chat_id=chat_id,
+            text=final_message,
+            reply_markup=kb,
+            parse_mode='html',
+            disable_notification=True
+        ).message_id
 
         cart._active_sum_message_id = sum_message_id
         cart.save()
@@ -310,7 +314,8 @@ def cart_handler(message):
     bot.send_message(chat_id=message.chat.id, text=start_message_text, reply_markup=kb)
 
     for item in cart.items:
-        kb, text = get_cart_item_kb_and_text(item)
+        kb = get_cart_item_kb(item)
+        text = get_cart_item_text(item)
 
         bot.send_message(text=text, reply_markup=kb, chat_id=message.chat.id, parse_mode='html')
 
@@ -392,7 +397,8 @@ def cart_modification_from_cart(call):
 
         item = cart.add_item(product=product)
 
-        reply_markup, text = get_cart_item_kb_and_text(item)
+        reply_markup = get_cart_item_kb(item)
+        text = get_cart_item_text(item)
 
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                               text=text, reply_markup=reply_markup, parse_mode='html')
@@ -404,7 +410,8 @@ def cart_modification_from_cart(call):
         item = cart.sub_item(product=product)
 
         if item:
-            reply_markup, text = get_cart_item_kb_and_text(item)
+            reply_markup = get_cart_item_kb(item)
+            text = get_cart_item_text(item)
 
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text=text, reply_markup=reply_markup, parse_mode='html')
@@ -508,6 +515,35 @@ def cart_delete(call):
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
 
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith('address_delete'))
+def address_delete(call):
+    if call.data.startswith('address_delete_index_'):
+        callback_addition = f"{call.data[len('address_delete_index_'):]}_{call.message.message_id}"
+
+        kb = InlineKeyboardMarkup()
+        buttons = [
+            InlineKeyboardButton(text=TEXTS['yes'], callback_data=f'address_delete_approval_{callback_addition}'),
+            InlineKeyboardButton(text=TEXTS['cancel'], callback_data='address_delete_cancelation')
+        ]
+        kb.row(*buttons)
+
+        bot.send_message(text=TEXTS['address_delete_approval'], chat_id=call.message.chat.id, reply_markup=kb)
+    elif call.data.startswith('address_delete_approval_'):
+        customer = get_customer(call.from_user.id, call.from_user.username)
+        callback_addition = call.data[len('address_delete_approval_'):]
+        address_index = int(callback_addition.split('_')[0])
+        address_message_id = int(callback_addition.split('_')[1])
+
+        del customer.address_list[address_index]
+        customer.save()
+
+        bot.delete_message(chat_id=call.message.chat.id, message_id=address_message_id)
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+
+    elif call.data == 'address_delete_cancelation':
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS['order_proceed']))
 def order_proceed(call):
     customer = get_customer(user_id=call.from_user.id, username=call.from_user.username)
@@ -515,11 +551,17 @@ def order_proceed(call):
         final_message = f"{TEXTS['choose_address']}"
         if not customer.address_list:
             final_message = TEXTS['no_addresses']
-        for address in customer.address_list:
+        for index, address in enumerate(customer.address_list):
             markup = InlineKeyboardMarkup()
             markup.row(
-                InlineKeyboardButton(text=TEXTS['choose_this_address'], callback_data='order_proceed_address_chosen'),
-                InlineKeyboardButton(text=TEXTS['delete_item'], callback_data='address_delete')
+                InlineKeyboardButton(
+                    text=TEXTS['choose_this_address'],
+                    callback_data=f'order_proceed_address_chosen_{index}'
+                ),
+                InlineKeyboardButton(
+                    text=TEXTS['delete_item'],
+                    callback_data=f'address_delete_index_{index}'
+                )
             )
             bot.send_message(text=str(address), reply_markup=markup, chat_id=call.message.chat.id, parse_mode='html')
 
@@ -527,12 +569,71 @@ def order_proceed(call):
         kb.row(InlineKeyboardButton(text=TEXTS['address_add'], callback_data='address_add'))
 
         bot.send_message(text=final_message, chat_id=call.message.chat.id, reply_markup=kb)
+    elif call.data.startswith('order_proceed_address_chosen_'):
+        address_index = int(call.data[len('order_proceed_address_chosen_'):])
+        cart = customer.get_or_create_current_cart()
+        cart.address = customer.address_list[address_index]
+        cart.save()
+
+        cart_items_txt = '\n'.join([get_cart_item_text(ci) for ci in cart.items])
+        total = f"{TEXTS['total_cost']}: <b>{cart.total_cost}₴</b>"
+
+        text = '\n'.join(
+            [
+                cart_items_txt,
+                '',
+                total,
+                '',
+                TEXTS['shipping_address'],
+                str(cart.address)
+            ]
+        )
+
+        kb = InlineKeyboardMarkup()
+        buttons = [
+            InlineKeyboardButton(text=TEXTS['back'], callback_data='order_proceed'),
+            InlineKeyboardButton(text=TEXTS['order_confirmation'], callback_data=f'order_proceed_final_confirmation')
+        ]
+        kb.row(*buttons)
+
+        bot.send_message(text=text, chat_id=call.message.chat.id, reply_markup=kb, parse_mode='html')
+    elif call.data.startswith('order_proceed_final_confirmation'):
+        cart = customer.get_or_create_current_cart()
+
+        cart.archive()
+
+        kb = get_updated_reply_markup(customer)
+
+        bot.send_message(reply_markup=kb,
+                         chat_id=call.message.chat.id,
+                         text=TEXTS['order_ended'],
+                         parse_mode='html'
+                         )
 
 
-@bot.callback_query_handler(func=lambda call: call.data=='address_add')
+@bot.callback_query_handler(func=lambda call: call.data == 'address_add')
 def address_add_start_form(call):
     bot.send_message(text=TEXTS['address_disclaimer'], chat_id=call.message.chat.id)
     bot.send_message(text=TEXTS['address_add_name'], chat_id=call.message.chat.id, reply_markup=ForceReply())
+
+
+@bot.message_handler(func=lambda message: message.text == START_KB['discount_products'])
+def discount_products_handler(message):
+    customer = get_customer(message.from_user.id, message.from_user.username)
+    customer.current_straight_product_list = []
+    customer.current_backward_product_list = []
+
+    customer.current_straight_product_list.extend(Product.get_discount_products())
+    product = customer.current_straight_product_list.pop()
+    customer.current_backward_product_list.append(product)
+    customer.save()
+
+    send_product_preview(
+        product=product,
+        chat_id=message.chat.id,
+        send_next_button=bool(customer.current_straight_product_list),
+        send_all_products_button=bool(customer.current_straight_product_list)
+    )
 
 @bot.message_handler(func=lambda m: all((m.reply_to_message, m.reply_to_message.message_id + 1 == m.message_id)))
 def address_form_handler(message):
@@ -570,20 +671,3 @@ def news_handler(message):
     pass
 
 
-@bot.message_handler(func=lambda message: message.text == START_KB['discount_products'])
-def discount_products_handler(message):
-    customer = get_customer(message.from_user.id, message.from_user.username)
-    customer.current_straight_product_list = []
-    customer.current_backward_product_list = []
-
-    customer.current_straight_product_list.extend(Product.get_discount_products())
-    product = customer.current_straight_product_list.pop()
-    customer.current_backward_product_list.append(product)
-    customer.save()
-
-    send_product_preview(
-        product=product,
-        chat_id=message.chat.id,
-        send_next_button=bool(customer.current_straight_product_list),
-        send_all_products_button=bool(customer.current_straight_product_list)
-    )

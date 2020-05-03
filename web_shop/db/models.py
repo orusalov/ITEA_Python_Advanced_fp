@@ -159,6 +159,7 @@ class Cart(me.Document):
     customer = me.ReferenceField(Customer)
     items = me.EmbeddedDocumentListField(CartItem)
     is_archived = me.BooleanField(default=False)
+    address = me.EmbeddedDocumentField(Address)
 
     _active_sum_message_id = me.IntField()
 
