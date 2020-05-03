@@ -4,13 +4,13 @@ from ..db.models import Customer, Category, Product
 from telebot.types import (
     KeyboardButton,
     ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
+    ForceReply,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     Update
 )
 
-from time import sleep
+import json
 
 from .keyboards import START_KB, TEXTS
 from flask import Flask
@@ -507,6 +507,62 @@ def cart_delete(call):
     elif call.data == CALLBACK_PARTS['cart_delete_cancelation']:
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
 
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS['order_proceed']))
+def order_proceed(call):
+    customer = get_customer(user_id=call.from_user.id, username=call.from_user.username)
+    if call.data == CALLBACK_PARTS['order_proceed']:
+        final_message = f"{TEXTS['choose_address']}"
+        if not customer.address_list:
+            final_message = TEXTS['no_addresses']
+        for address in customer.address_list:
+            markup = InlineKeyboardMarkup()
+            markup.row(
+                InlineKeyboardButton(text=TEXTS['choose_this_address'], callback_data='order_proceed_address_chosen'),
+                InlineKeyboardButton(text=TEXTS['delete_item'], callback_data='address_delete')
+            )
+            bot.send_message(text=str(address), reply_markup=markup, chat_id=call.message.chat.id, parse_mode='html')
+
+        kb = InlineKeyboardMarkup()
+        kb.row(InlineKeyboardButton(text=TEXTS['address_add'], callback_data='address_add'))
+
+        bot.send_message(text=final_message, chat_id=call.message.chat.id, reply_markup=kb)
+
+
+@bot.callback_query_handler(func=lambda call: call.data=='address_add')
+def address_add_start_form(call):
+    bot.send_message(text=TEXTS['address_disclaimer'], chat_id=call.message.chat.id)
+    bot.send_message(text=TEXTS['address_add_name'], chat_id=call.message.chat.id, reply_markup=ForceReply())
+
+@bot.message_handler(func=lambda m: all((m.reply_to_message, m.reply_to_message.message_id + 1 == m.message_id)))
+def address_form_handler(message):
+    customer = get_customer(user_id=message.from_user.id, username=message.from_user.username)
+
+    if message.reply_to_message.text == TEXTS['address_add_name']:
+        customer.current_address_creation_form.first_name = message.text.title()
+        customer.save()
+        bot.send_message(text=TEXTS['address_add_surname'], chat_id=message.chat.id, reply_markup=ForceReply())
+    elif message.reply_to_message.text == TEXTS['address_add_surname']:
+        customer.current_address_creation_form.last_name = message.text.title()
+        customer.save()
+        bot.send_message(text=TEXTS['address_add_phone'], chat_id=message.chat.id, reply_markup=ForceReply())
+    elif message.reply_to_message.text == TEXTS['address_add_phone']:
+        customer.current_address_creation_form.phone_number = message.text
+        customer.save()
+        bot.send_message(text=TEXTS['address_add_city'], chat_id=message.chat.id, reply_markup=ForceReply())
+    elif message.reply_to_message.text == TEXTS['address_add_city']:
+        customer.current_address_creation_form.city = message.text
+        customer.save()
+        bot.send_message(text=TEXTS['address_add_NP_number'], chat_id=message.chat.id, reply_markup=ForceReply())
+    elif message.reply_to_message.text == TEXTS['address_add_NP_number']:
+        customer.current_address_creation_form.nova_poshta_branch = int(message.text)
+        customer.add_address()
+        customer.save()
+        kb = InlineKeyboardMarkup()
+        kb.row(
+            InlineKeyboardButton(text=TEXTS['order_proceed'], callback_data='order_proceed')
+        )
+        bot.send_message(text=TEXTS['address_add_success'], chat_id=message.chat.id, reply_markup=kb)
 
 
 @bot.message_handler(func=lambda message: message.text == START_KB['news'])

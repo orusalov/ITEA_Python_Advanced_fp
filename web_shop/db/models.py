@@ -3,6 +3,7 @@ import datetime
 from .db_config import DB_CONFIG
 from typing import Tuple
 from mongoengine import DoesNotExist
+from ..bot.keyboards import TEXTS
 
 me.connect(**DB_CONFIG)
 
@@ -67,6 +68,7 @@ class News(me.Document):
     pub_date = me.DateTimeField(default=datetime.datetime.now())
     image = me.FileField()
 
+
 # WTF???
 class Texts(me.Document):
     choices = (
@@ -77,18 +79,40 @@ class Texts(me.Document):
     text = me.StringField(choices=choices)
 
 
+class Address(me.EmbeddedDocument):
+    first_name = me.StringField(min_lenght=1, max_length=256, required=True)
+    last_name = me.StringField(min_lenght=1, max_length=256, required=True)
+    city = me.StringField(min_lenght=3, max_length=256, required=True)
+    phone_number = me.StringField(regex='^0\d{9}$', required=True)
+    nova_poshta_branch = me.IntField(min_value=1, max_value=100000, required=True)
+
+    def __str__(self):
+        name = f'{self.first_name} {self.last_name}'
+        np = f"{TEXTS['address_NP_branch']} {self.city}, #{self.nova_poshta_branch}"
+        txt = '\n'.join((name, self.phone_number, np))
+
+        return txt
+
+
 class Customer(me.Document):
     user_id = me.IntField(unique=True)
     username = me.StringField(min_length=1, max_length=256)
 
-    phone_number = me.StringField(min_length=9)
-    address = me.StringField()
+    address_list = me.EmbeddedDocumentListField(Address)
+
     first_name = me.StringField(min_lenght=1, max_length=256)
     last_name = me.StringField(min_lenght=1, max_length=256)
-    age = me.IntField(min_value=12, max_value=99)
 
     current_straight_product_list = me.ListField()
     current_backward_product_list = me.ListField()
+
+    current_address_creation_form = Address(
+        first_name='dummy',
+        last_name='dummy',
+        city='dummy',
+        phone_number = '0000000000',
+        nova_poshta_branch = 1
+    )
 
     def get_or_create_current_cart(self) -> Tuple[bool, 'Cart']:
         created = False
@@ -98,6 +122,9 @@ class Customer(me.Document):
             cart = Cart.objects.create(customer=self)
 
         return cart
+
+    def add_address(self):
+        self.address_list.append(self.current_address_creation_form)
 
 
 class CartItem(me.EmbeddedDocument):

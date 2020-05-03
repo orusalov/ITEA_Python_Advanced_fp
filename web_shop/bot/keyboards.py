@@ -37,5 +37,18 @@ TEXTS = {
     'order_proceed': 'Оформить заказ',
     'yes': 'Да',
     'cancel': 'Отмена',
-    'cart_delete_approval': 'Вы уверены, что хотите удалить корзину?'
+    'cart_delete_approval': 'Вы уверены, что хотите удалить корзину?',
+    'choose_address': 'Выберите адрес доставки или создайте новый',
+    'choose_this_address': 'Выбрать ✅',
+    'no_addresses': 'Нет сохраненных адресов',
+    'address_disclaimer': 'Мы осуществляем доставку только по Украине Новой Почтой\n'
+                          'для отправки нам нужны реквизиты',
+    'address_NP_branch': 'Отделение Новой Почты:',
+    'address_add': 'Добавить адрес',
+    'address_add_name': 'Имя получателя:',
+    'address_add_surname': 'Фамилия получателя:',
+    'address_add_city': 'Населенный пункт:',
+    'address_add_phone': 'Номер получателя:',
+    'address_add_NP_number': 'Номер отделения Новой Почты:',
+    'address_add_success': 'Адрес добавлен успешно'
 }
