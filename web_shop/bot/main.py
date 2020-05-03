@@ -634,7 +634,13 @@ def discount_products_handler(message):
     )
 
 
-@bot.message_handler(func=lambda m: all((m.reply_to_message, m.reply_to_message.message_id + 1 == m.message_id)))
+def form_input(message):
+    if message.reply_to_message:
+        return message.reply_to_message.message_id + 1 == message.message_id
+    else:
+        return False
+
+@bot.message_handler(func=form_input)
 def address_form_handler(message):
     customer = get_customer(user_id=message.from_user.id, username=message.from_user.username)
 

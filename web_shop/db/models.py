@@ -131,7 +131,7 @@ class CartItem(me.EmbeddedDocument):
     product = me.ReferenceField('Product')
     quantity = me.IntField(min_value=1, default=1)
     is_archived = me.BooleanField(default=False)
-    _order_product_price = me.IntField()
+    _order_product_price = me.DecimalField()
 
     @property
     def product_price(self):
