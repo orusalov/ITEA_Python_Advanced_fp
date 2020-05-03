@@ -635,6 +635,7 @@ def discount_products_handler(message):
         send_all_products_button=bool(customer.current_straight_product_list)
     )
 
+
 @bot.message_handler(func=lambda m: all((m.reply_to_message, m.reply_to_message.message_id + 1 == m.message_id)))
 def address_form_handler(message):
     customer = get_customer(user_id=message.from_user.id, username=message.from_user.username)
@@ -669,5 +670,3 @@ def address_form_handler(message):
 @bot.message_handler(func=lambda message: message.text == START_KB['news'])
 def news_handler(message):
     pass
-
-
