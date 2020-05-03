@@ -10,8 +10,6 @@ from telebot.types import (
     Update
 )
 
-import json
-
 from .keyboards import START_KB, TEXTS
 from flask import Flask
 from flask import request, abort
