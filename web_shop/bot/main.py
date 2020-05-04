@@ -1,6 +1,6 @@
 from .webshopbot import WebShopBot
 from .config import *
-from ..db.models import Customer, Category, Product
+from ..db.models import Customer, Category, Product, Address
 from telebot.types import (
     KeyboardButton,
     ReplyKeyboardMarkup,
@@ -515,8 +515,11 @@ def cart_delete(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('address_delete'))
 def address_delete(call):
-    if call.data.startswith('address_delete_index_'):
-        callback_addition = f"{call.data[len('address_delete_index_'):]}_{call.message.message_id}"
+    customer = get_customer(call.from_user.id, call.from_user.username)
+    if call.data.startswith('address_delete_index'):
+        address_txt = call.message.text
+
+        callback_addition = f"{customer.address_list.index(address_txt)}_{call.message.message_id}"
 
         kb = InlineKeyboardMarkup()
         buttons = [
@@ -527,7 +530,7 @@ def address_delete(call):
 
         bot.send_message(text=TEXTS['address_delete_approval'], chat_id=call.message.chat.id, reply_markup=kb)
     elif call.data.startswith('address_delete_approval_'):
-        customer = get_customer(call.from_user.id, call.from_user.username)
+
         callback_addition = call.data[len('address_delete_approval_'):]
         address_index = int(callback_addition.split('_')[0])
         address_message_id = int(callback_addition.split('_')[1])
@@ -549,16 +552,16 @@ def order_proceed(call):
         final_message = f"{TEXTS['choose_address']}"
         if not customer.address_list:
             final_message = TEXTS['no_addresses']
-        for index, address in enumerate(customer.address_list):
+        for address in customer.address_list:
             markup = InlineKeyboardMarkup()
             markup.row(
                 InlineKeyboardButton(
                     text=TEXTS['choose_this_address'],
-                    callback_data=f'order_proceed_address_chosen_{index}'
+                    callback_data=f'order_proceed_address_chosen'
                 ),
                 InlineKeyboardButton(
                     text=TEXTS['delete_item'],
-                    callback_data=f'address_delete_index_{index}'
+                    callback_data=f'address_delete_index'
                 )
             )
             bot.send_message(text=str(address), reply_markup=markup, chat_id=call.message.chat.id, parse_mode='html')
@@ -567,8 +570,8 @@ def order_proceed(call):
         kb.row(InlineKeyboardButton(text=TEXTS['address_add'], callback_data='address_add'))
 
         bot.send_message(text=final_message, chat_id=call.message.chat.id, reply_markup=kb)
-    elif call.data.startswith('order_proceed_address_chosen_'):
-        address_index = int(call.data[len('order_proceed_address_chosen_'):])
+    elif call.data.startswith('order_proceed_address_chosen'):
+        address_index = customer.address_list.index(call.message.text)
         cart = customer.get_or_create_current_cart()
         cart.address = customer.address_list[address_index]
         cart.save()
@@ -645,7 +648,13 @@ def address_form_handler(message):
     customer = get_customer(user_id=message.from_user.id, username=message.from_user.username)
 
     if message.reply_to_message.text == TEXTS['address_add_name']:
-        customer.current_address_creation_form.first_name = message.text.title()
+        customer.current_address_creation_form = Address(
+            first_name=message.text.title(),
+            last_name='dummy',
+            city='dummy',
+            phone_number='0000000000',
+            nova_poshta_branch=1
+        )
         customer.save()
         bot.send_message(text=TEXTS['address_add_surname'], chat_id=message.chat.id, reply_markup=ForceReply())
     elif message.reply_to_message.text == TEXTS['address_add_surname']:
@@ -663,14 +672,48 @@ def address_form_handler(message):
     elif message.reply_to_message.text == TEXTS['address_add_NP_number']:
         customer.current_address_creation_form.nova_poshta_branch = int(message.text)
         customer.add_address()
+        del customer.current_address_creation_form
         customer.save()
         kb = InlineKeyboardMarkup()
         kb.row(
             InlineKeyboardButton(text=TEXTS['order_proceed'], callback_data='order_proceed')
         )
         bot.send_message(text=TEXTS['address_add_success'], chat_id=message.chat.id, reply_markup=kb)
+    else:
+        bot.send_message(text=TEXTS['not_correct'], chat_id=message.chat.id)
+
+        kb = get_updated_reply_markup(customer)
+
+        bot.send_message(reply_markup=kb,
+                         chat_id=message.chat.id,
+                         text=f"{message.chat.first_name}, {TEXTS['greeting_message']}",
+                         parse_mode='html'
+                         )
 
 
 @bot.message_handler(func=lambda message: message.text == START_KB['news'])
 def news_handler(message):
     pass
+
+@bot.message_handler(
+    content_types=[
+        'audio',
+        'photo',
+        'voice',
+        'video',
+        'document',
+        'text',
+        'location',
+        'contact',
+        'sticker'
+    ]
+)
+def default_handler(message):
+    customer = get_customer(message.from_user.id, username=message.from_user.username)
+    kb = get_updated_reply_markup(customer)
+
+    bot.send_message(reply_markup=kb,
+                     chat_id=message.chat.id,
+                     text=f"{message.chat.first_name}, {TEXTS['greeting_message']}",
+                     parse_mode='html'
+                     )

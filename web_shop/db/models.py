@@ -93,6 +93,9 @@ class Address(me.EmbeddedDocument):
 
         return txt
 
+    def __eq__(self, other):
+        return str(self) == str(other)
+
 
 class Customer(me.Document):
     user_id = me.IntField(unique=True)
@@ -106,13 +109,7 @@ class Customer(me.Document):
     current_straight_product_list = me.ListField()
     current_backward_product_list = me.ListField()
 
-    current_address_creation_form = Address(
-        first_name='dummy',
-        last_name='dummy',
-        city='dummy',
-        phone_number = '0000000000',
-        nova_poshta_branch = 1
-    )
+    current_address_creation_form = me.EmbeddedDocumentField(Address)
 
     def get_or_create_current_cart(self) -> Tuple[bool, 'Cart']:
         created = False
