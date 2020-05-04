@@ -372,23 +372,37 @@ def category_handler(call):
             )
 
         elif category.is_leaf:
-            customer = get_customer(call.from_user.id, call.from_user.username)
+            if category.products:
+                customer = get_customer(call.from_user.id, call.from_user.username)
 
-            customer.current_straight_product_list = []
-            customer.current_backward_product_list = []
+                customer.current_straight_product_list = []
+                customer.current_backward_product_list = []
 
-            customer.current_straight_product_list.extend(category.products)
-            product = customer.current_straight_product_list.pop()
-            customer.current_backward_product_list.append(product)
+                customer.current_straight_product_list.extend(category.products)
+                product = customer.current_straight_product_list.pop()
+                customer.current_backward_product_list.append(product)
 
-            customer.save()
+                customer.save()
 
-            send_product_preview(
-                product=product,
-                chat_id=call.message.chat.id,
-                send_next_button=bool(customer.current_straight_product_list),
-                send_all_products_button=bool(customer.current_straight_product_list)
-            )
+                send_product_preview(
+                    product=product,
+                    chat_id=call.message.chat.id,
+                    send_next_button=bool(customer.current_straight_product_list),
+                    send_all_products_button=bool(customer.current_straight_product_list)
+                )
+            else:
+                kb = InlineKeyboardMarkup()
+
+                kb.row(
+                    InlineKeyboardButton(
+                        text=TEXTS['back'],
+                        callback_data=f"{CALLBACK_PARTS['category']}{category.parent.id}"
+                    )
+                )
+
+                bot.edit_message_text(text=TEXTS['no_products'], reply_markup=kb, chat_id=call.message.chat.id,
+                                      message_id=call.message.message_id)
+
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS["cart_item_modification"]))

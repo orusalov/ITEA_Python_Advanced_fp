@@ -11,7 +11,17 @@ def create_category(**kwargs):
     requirede_fields = ('title', 'slug')
     [kwargs[arg] for arg in requirede_fields]
 
-    return Category.objects.create(**kwargs)
+    subcategory_list = []
+    if kwargs.get('subcategory_list'):
+        subcategory_list = kwargs['subcategory_list']
+        del kwargs['subcategory_list']
+    cat = Category.objects.create(**kwargs)
+    for subcategory in subcategory_list:
+        cat.add_subcategory(subcategory)
+
+    cat.save()
+
+    return cat
 
 
 def create_product(**kwargs):
@@ -27,12 +37,26 @@ def create_product(**kwargs):
     return product
 
 
-def get_category_data(unique_arg):
-    return {
-        'title': f'Category {unique_arg}',
-        'slug': f'slug-{unique_arg}',
-        'description': f'some description {unique_arg}'
+def get_category_data():
+    return_ = {
+        'title': input('title: ').strip(),
+        'slug': input('slug: ').strip()
     }
+    description = input('description: ').strip()
+    if description:
+        return_['description'] = description
+
+    subcategory_list = []
+    while True:
+        subcategory_slug = input('subcategory_slug: ')
+        if not subcategory_slug:
+            break
+        subcategory_list.append(Category.objects.get(slug=subcategory_slug))
+
+    if subcategory_list:
+        return_['subcategory_list'] = subcategory_list
+
+    return return_
 
 def get_product_data():
     title = input('title: ').strip()
@@ -50,7 +74,7 @@ def get_product_data():
     discount_perc = None if not discount_perc else int(discount_perc)
     characteristics_width = None if not characteristics_width else float(characteristics_width)
     characteristics_depth = None if not characteristics_depth else float(characteristics_depth)
-    characteristics_weight = None if not characteristics_weight else float(characteristics_weight)
+    characteristics_height = None if not characteristics_height else float(characteristics_height)
     characteristics_weight = None if not characteristics_weight else float(characteristics_weight)
 
     image = requests.get(photo_url).content
