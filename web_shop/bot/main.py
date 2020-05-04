@@ -10,6 +10,7 @@ from telebot.types import (
     Update
 )
 
+from copy import copy
 from .keyboards import START_KB, TEXTS
 from flask import Flask
 from flask import request, abort
@@ -144,8 +145,8 @@ def send_product_full_view(product, chat_id):
 
     discount_txt = TEXTS['discount']
 
-    price_str = f'{f"<s>{product.price}</s> <b>" if product.discount_perc else ""}{product.get_price()}₴' \
-        f'{f"</b> 🔥({discount_txt}: {product.discount_perc}%)" if product.discount_perc else ""}'
+    price_str = f'{f"<s>{product.price}</s> " if product.discount_perc else ""}<b>{product.get_price()}₴</b>' \
+        f'{f" 🔥({discount_txt}: {product.discount_perc}%)" if product.discount_perc else ""}'
 
     caption = [
         f'<b>{product.title}</b>',
@@ -160,10 +161,17 @@ def send_product_full_view(product, chat_id):
 
         characs = set(patrs.keys()) & characs
 
-        nl = '\n   '
-        dimensions = f"{nl}{nl.join([f'{TEXTS[k]}: {patrs[k]}' for k in characs])}"
+        characs = dict.fromkeys(characs)
+        for k in copy(characs):
+            if product.characteristics.__getattribute__(k):
+                characs[k] = product.characteristics.__getattribute__(k)
+            else:
+                del characs[k]
 
-        caption.insert(2, f'{TEXTS["characteristics"]}:\n{dimensions}')
+        nl = '\n   '
+        dimensions = f"{nl}{nl.join([f'{TEXTS[k]}: {v}' for k, v in characs.items()])}"
+
+        caption.insert(2, f'\n{TEXTS["characteristics"]}:{dimensions}')
 
     bot.send_photo(
         chat_id=chat_id,
