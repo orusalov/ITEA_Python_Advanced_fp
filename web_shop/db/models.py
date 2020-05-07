@@ -23,13 +23,23 @@ class Category(me.Document):
     parent = me.ReferenceField('self')
 
     def add_subcategory(self, subcategory_obj):
-        subcategory_obj.parent = self
-        self.subcategories.append(subcategory_obj.save())
-        self.save()
+        if not self.subcategories.count(subcategory_obj):
+            subcategory_obj.parent = self
+            self.subcategories.append(subcategory_obj.save())
+            self.save()
+
+    def del_subcategory(self, subcategory_obj):
+        if self.subcategories.count(subcategory_obj):
+            subcategory_obj.parent = None
+            self.subcategories.remove(subcategory_obj.save())
+            self.save()
+
+    def add_parent(self, parent):
+        parent.add_subcategory(self)
 
     @property
     def products(self):
-        return Product.objects(category=self)
+        return Product.objects(category=self, is_archived=False)
 
     @property
     def is_root(self):
@@ -53,20 +63,19 @@ class Product(me.Document):
     discount_perc = me.IntField(min_value=0, max_value=100, default=0)
     category = me.ReferenceField(Category)
     image = me.FileField()
+    is_archived = me.BooleanField(required=True, default=False)
 
     @classmethod
     def get_discount_products(cls):
-        return cls.objects(discount_perc__gt=0)
+        return cls.objects(discount_perc__gt=0, is_archived=False)
 
     def get_price(self):
         return (100 - self.discount_perc) * self.price / 100
 
+    def archive(self):
+        self.is_archived = True
+        self.save()
 
-class News(me.Document):
-    title = me.StringField(min_length=2, max_length=512)
-    body = me.StringField(min_length=2)
-    pub_date = me.DateTimeField(default=datetime.datetime.now())
-    image = me.FileField()
 
 
 class Texts(me.Document):
@@ -153,6 +162,8 @@ class Customer(me.Document):
     first_name = me.StringField(min_lenght=1, max_length=256)
     last_name = me.StringField(min_lenght=1, max_length=256)
 
+    is_archived = me.BooleanField(default=False)
+
     current_straight_product_list = me.ListField()
     current_backward_product_list = me.ListField()
 
@@ -169,6 +180,9 @@ class Customer(me.Document):
 
     def add_address(self):
         self.address_list.append(self.current_address_creation_form)
+
+    def archive(self):
+        is_archived = True
 
 
 class CartItem(me.EmbeddedDocument):

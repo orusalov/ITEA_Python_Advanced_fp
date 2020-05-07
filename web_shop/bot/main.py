@@ -502,7 +502,7 @@ def detailed_product_view(call):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS["to_cart"]))
-def detailed_product_view(call):
+def to_cart(call):
     customer = get_customer(call.from_user.id, call.from_user.username)
     product_id = call.data[len(CALLBACK_PARTS["to_cart"]):]
     product = Product.objects.get(id=product_id)
