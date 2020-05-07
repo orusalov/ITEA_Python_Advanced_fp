@@ -47,7 +47,7 @@ def set_webhook():
     time.sleep(2)
     bot.set_webhook(
         url=f'https://{HOST}/{ENDPOINT}',
-        certificate=open(CERTIFICETE, 'r')
+        certificate=open(CERTIFICATE, 'r')
     )
 
 
@@ -184,11 +184,24 @@ def send_product_full_view(product, chat_id):
     product.image.seek(0)
 
 
-def get_customer(user_id, username):
+def create_customer(user_id, username, first_name=None, last_name=None):
     try:
         customer = Customer.objects.get(user_id=user_id)
     except DoesNotExist:
         customer = Customer.objects.create(user_id=user_id, username=username)
+    customer.username = username
+    customer.first_name = first_name
+    customer.last_name = last_name
+    customer.is_archived = False
+    customer.save()
+
+    return customer
+
+def get_customer(user_id, username):
+    try:
+        customer = Customer.objects.get(user_id=user_id)
+    except DoesNotExist:
+        customer = create_customer(user_id=user_id, username=username)
 
     return customer
 
@@ -291,7 +304,12 @@ def process_webhook():
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    customer = get_customer(message.from_user.id, username=message.from_user.username)
+    customer = create_customer(
+        user_id=message.from_user.id,
+        username=message.from_user.username,
+        first_name=message.from_user.first_name,
+        last_name=message.from_user.last_name
+    )
     kb = get_updated_reply_markup(customer)
 
     bot.send_message(reply_markup=kb,

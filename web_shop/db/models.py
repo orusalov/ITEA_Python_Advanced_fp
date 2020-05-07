@@ -182,7 +182,8 @@ class Customer(me.Document):
         self.address_list.append(self.current_address_creation_form)
 
     def archive(self):
-        is_archived = True
+        self.is_archived = True
+        self.save()
 
 
 class CartItem(me.EmbeddedDocument):
