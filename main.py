@@ -4,10 +4,9 @@ from web_shop.bot.check_activity import tl
 
 if __name__ == '__main__':
 
+    tl.start() # block=True
     if not DEBUG:
-        tl.start()
         set_webhook()
         app.run(port=PORT)
     else:
-        tl.start()  # block=True
         bot.polling()

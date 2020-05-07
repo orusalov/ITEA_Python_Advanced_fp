@@ -59,7 +59,7 @@ def root_categories_buttons():
 
 
 def send_product_preview(product, chat_id, send_prev_button=False, send_next_button=False,
-                         send_all_products_button=True):
+                         send_all_products_button=True, delete_message_id=None):
     kb = InlineKeyboardMarkup(row_width=2)
     # buttons = [
     #     InlineKeyboardButton(text=TEXTS['details'],
@@ -121,6 +121,9 @@ def send_product_preview(product, chat_id, send_prev_button=False, send_next_but
         f'{f"<s>{product.price}</s> <b>" if product.discount_perc else ""}{product.get_price()}₴' \
         f'{"</b> 🔥" if product.discount_perc else ""}'
 
+    if delete_message_id:
+        bot.delete_message(chat_id=chat_id, message_id=delete_message_id)
+
     bot.send_photo(
         chat_id=chat_id,
         photo=product.image.read(),
@@ -132,7 +135,7 @@ def send_product_preview(product, chat_id, send_prev_button=False, send_next_but
     product.image.seek(0)
 
 
-def send_product_full_view(product, chat_id):
+def send_product_full_view(product, chat_id, delete_message_id):
     kb = InlineKeyboardMarkup()
     first_row = [
         InlineKeyboardButton(text=TEXTS['back'],
@@ -172,6 +175,9 @@ def send_product_full_view(product, chat_id):
         dimensions = f"{nl}{nl.join([f'{TEXTS[k]}: {v}' for k, v in characs.items()])}"
 
         caption.insert(2, f'\n{TEXTS["characteristics"]}:{dimensions}')
+
+    if delete_message_id:
+        bot.delete_message(chat_id=chat_id, message_id=delete_message_id)
 
     bot.send_photo(
         chat_id=chat_id,
@@ -407,7 +413,8 @@ def category_handler(call):
                     product=product,
                     chat_id=call.message.chat.id,
                     send_next_button=bool(customer.current_straight_product_list),
-                    send_all_products_button=bool(customer.current_straight_product_list)
+                    send_all_products_button=bool(customer.current_straight_product_list),
+                    delete_message_id=call.message.message_id
                 )
             else:
                 kb = InlineKeyboardMarkup()
@@ -482,7 +489,8 @@ def next_product(call):
         product=product,
         chat_id=call.message.chat.id,
         send_prev_button=len(customer.current_backward_product_list) > 1,
-        send_next_button=bool(customer.current_straight_product_list)
+        send_next_button=bool(customer.current_straight_product_list),
+        delete_message_id=call.message.message_id
     )
 
 
@@ -497,26 +505,30 @@ def prev_product(call):
         product=product,
         chat_id=call.message.chat.id,
         send_prev_button=len(customer.current_backward_product_list) > 1,
-        send_next_button=bool(customer.current_straight_product_list)
+        send_next_button=bool(customer.current_straight_product_list),
+        delete_message_id=call.message.message_id
     )
 
 
 @bot.callback_query_handler(func=lambda call: call.data == CALLBACK_PARTS["all_products"])
 def all_product(call):
     customer = get_customer(call.from_user.id, call.from_user.username)
+    delete_message_id = call.message.message_id
     for product in (*customer.current_backward_product_list[::-1], *customer.current_straight_product_list[::-1]):
         send_product_preview(
             product=product,
             chat_id=call.message.chat.id,
-            send_all_products_button=False
+            send_all_products_button=False,
+            delete_message_id=delete_message_id
         )
+        delete_message_id = None
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS["product"]))
 def detailed_product_view(call):
     product_id = call.data[len(CALLBACK_PARTS["product"]):]
     product = Product.objects.get(id=product_id)
-    send_product_full_view(product=product, chat_id=call.message.chat.id)
+    send_product_full_view(product=product, chat_id=call.message.chat.id, delete_message_id=call.message.message_id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS["to_cart"]))
