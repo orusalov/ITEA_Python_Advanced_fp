@@ -11,4 +11,3 @@ if __name__ == '__main__':
     else:
         tl.start()  # block=True
         bot.polling()
-

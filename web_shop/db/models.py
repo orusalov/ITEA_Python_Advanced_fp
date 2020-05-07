@@ -77,7 +77,6 @@ class Product(me.Document):
         self.save()
 
 
-
 class Texts(me.Document):
     choices = (
         ('greeting_message', 'Приветсвтую в телеграм магазине 🏬'),

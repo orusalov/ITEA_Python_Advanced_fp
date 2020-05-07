@@ -61,7 +61,6 @@ class ProductSchema(Schema):
     image = fields.String(required=True)
 
 
-
 class ProductPostSchema(ProductSchema):
     def __init__(self):
         super().__init__()
@@ -85,11 +84,11 @@ class ProductPutSchema(ProductPostSchema):
 class AdressSchema(Schema):
     id = fields.String(dump_only=True)
 
-    first_name = fields.String(required=True,min_lenght=1, max_length=256)
+    first_name = fields.String(required=True, min_lenght=1, max_length=256)
     last_name = fields.String(required=True, min_lenght=1, max_length=256)
     city = fields.String(min_lenght=3, max_length=256, required=True)
     phone_number = fields.String(required=True)
-    nova_poshta_branch = fields.Int(required=True, validate=lambda v: 0 < v <=100000)
+    nova_poshta_branch = fields.Int(required=True, validate=lambda v: 0 < v <= 100000)
 
     @validates
     def validate_phone_number(self, value):
@@ -112,7 +111,7 @@ class CustomerSchema(Schema):
 
 
 class OrderItemSchema(Schema):
-    product = fields.Nested(lambda: ProductSchema(exclude=('discount_perc','category','price')))
+    product = fields.Nested(lambda: ProductSchema(exclude=('discount_perc', 'category', 'price')))
     quantity = fields.Int(required=True, validate=lambda v: v > 0)
     product_price = fields.Float(required=True, validate=lambda v: v >= 0)
     item_subsum = fields.Float(required=True, validate=lambda v: v >= 0)
@@ -120,9 +119,9 @@ class OrderItemSchema(Schema):
 
 class OrderSchema(Schema):
     id = fields.String(dump_only=True)
-    customer = fields.Nested(lambda: CustomerSchema(exclude=("address_list",)),required=True)
-    items = fields.List(fields.Nested(OrderItemSchema,required=True))
-    address = fields.Nested(AdressSchema,required=True)
+    customer = fields.Nested(lambda: CustomerSchema(exclude=("address_list",)), required=True)
+    items = fields.List(fields.Nested(OrderItemSchema, required=True))
+    address = fields.Nested(AdressSchema, required=True)
     total_cost = fields.Float(required=True, validate=lambda v: v >= 0)
     total_items = fields.Int(required=True, validate=lambda v: v > 0)
     distinct_items = fields.Int(required=True, validate=lambda v: v > 0)

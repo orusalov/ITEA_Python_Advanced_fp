@@ -7,6 +7,7 @@ from .models import (
 
 import requests, io
 
+
 def create_category(**kwargs):
     requirede_fields = ('title', 'slug')
     [kwargs[arg] for arg in requirede_fields]
@@ -57,6 +58,7 @@ def get_category_data():
         return_['subcategory_list'] = subcategory_list
 
     return return_
+
 
 def get_product_data():
     title = input('title: ').strip()

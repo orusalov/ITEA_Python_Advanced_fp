@@ -45,7 +45,6 @@ class CategoryResource(Resource):
             subcategories = data['subcategories']
             del data['subcategories']
 
-
         category = Category.objects.create(**data)
         if parent:
             category.add_parent(parent)

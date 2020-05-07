@@ -197,6 +197,7 @@ def create_customer(user_id, username, first_name=None, last_name=None):
 
     return customer
 
+
 def get_customer(user_id, username):
     try:
         customer = Customer.objects.get(user_id=user_id)
@@ -420,7 +421,6 @@ def category_handler(call):
 
                 bot.edit_message_text(text=TEXTS['no_products'], reply_markup=kb, chat_id=call.message.chat.id,
                                       message_id=call.message.message_id)
-
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith(CALLBACK_PARTS["cart_item_modification"]))
@@ -683,6 +683,7 @@ def form_input(message):
     else:
         return False
 
+
 @bot.message_handler(func=form_input)
 def address_form_handler(message):
     customer = get_customer(user_id=message.from_user.id, username=message.from_user.username)
@@ -734,6 +735,7 @@ def address_form_handler(message):
 @bot.message_handler(func=lambda message: message.text == START_KB['news'])
 def news_handler(message):
     pass
+
 
 @bot.message_handler(
     content_types=[

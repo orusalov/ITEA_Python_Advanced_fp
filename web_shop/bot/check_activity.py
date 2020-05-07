@@ -6,6 +6,8 @@ from timeloop import Timeloop
 from datetime import timedelta
 
 tl = Timeloop()
+
+
 @tl.job(interval=timedelta(seconds=3600))
 def sample_job_every_1h():
     for customer in Customer.objects(is_archived=False):
