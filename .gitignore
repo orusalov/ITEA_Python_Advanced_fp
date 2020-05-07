@@ -1,4 +1,5 @@
 *.pyc
 venv*
-*config.py
+db_config.py
+local_config.py
 .idea
