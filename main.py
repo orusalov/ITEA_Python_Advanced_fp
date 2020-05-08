@@ -7,6 +7,6 @@ from web_shop.bot.check_activity import tl
 tl.start() # block=True
 if not DEBUG:
     set_webhook()
-    app.run(port=PORT)
+    # app.run(port=PORT)
 else:
     bot.polling()
