@@ -49,7 +49,7 @@ def set_webhook():
     bot.remove_webhook()
     time.sleep(2)
     bot.set_webhook(
-        url=f'https://{HOST}/',# {ENDPOINT}
+        url=f'https://{HOST}/{ENDPOINT}',#
         certificate=open(CERTIFICATE, 'r')
     )
 
@@ -307,6 +307,7 @@ def process_webhook():
         json_string = request.get_data().decode('utf-8')
         update = Update.de_json(json_string)
         bot.process_new_updates([update])
+        set_webhook()
         return ''
     else:
         abort(status=403)
