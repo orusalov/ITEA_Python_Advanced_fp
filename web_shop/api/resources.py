@@ -1,6 +1,6 @@
 from flask_restful import Resource
 from ..db.models import Characteristics, Category, Product, Customer, Cart
-from mongoengine import DoesNotExist, ValidationError as VE
+from mongoengine import DoesNotExist, ValidationError as VE, NotUniqueError
 from .schemas import (
     CategorySchema,
     CategoryPostSchema,
@@ -47,7 +47,7 @@ class CategoryResource(Resource):
 
         try:
             category = Category.objects.create(**data)
-        except VE as err:
+        except NotUniqueError as err:
             return str(err)
 
         if parent:
@@ -147,7 +147,7 @@ class ProductResource(Resource):
 
         try:
             product = Product.objects.create(**data)
-        except VE as err:
+        except NotUniqueError as err:
             return str(err)
 
         return ProductSchema().dump(product)
