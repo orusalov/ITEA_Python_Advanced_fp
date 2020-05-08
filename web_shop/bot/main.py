@@ -9,6 +9,8 @@ from telebot.types import (
 from .keyboards import START_KB, TEXTS
 from flask import Flask
 from flask import request, abort
+from mongoengine import ValidationError
+from builtins import ValueError
 
 bot = WebShopBot(TOKEN)
 app = Flask(__name__)
@@ -416,30 +418,51 @@ def address_form_handler(message):
     customer = bot.get_customer(user_id=message.from_user.id)
 
     if message.reply_to_message.text == TEXTS['address_add_name']:
-        customer.current_address_creation_form = bot.get_default_address()
-        customer.current_address_creation_form.first_name = message.text.title()
-        customer.save()
-        bot.send_message(text=TEXTS['address_add_surname'], chat_id=message.chat.id, reply_markup=ForceReply())
+        try:
+            customer.current_address_creation_form = bot.get_default_address()
+            customer.current_address_creation_form.first_name = message.text.title()
+            customer.save()
+            bot.send_message(text=TEXTS['address_add_surname'], chat_id=message.chat.id, reply_markup=ForceReply())
+        except (ValidationError, ValueError):
+            bot.send_message(text='Неправильный формат', chat_id=message.chat.id)
+            bot.send_message(text=TEXTS['address_add_name'], chat_id=message.chat.id, reply_markup=ForceReply())
+
     elif message.reply_to_message.text == TEXTS['address_add_surname']:
-        customer.current_address_creation_form.last_name = message.text.title()
-        customer.save()
-        bot.send_message(text=TEXTS['address_add_phone'], chat_id=message.chat.id, reply_markup=ForceReply())
+        try:
+            customer.current_address_creation_form.last_name = message.text.title()
+            customer.save()
+            bot.send_message(text=TEXTS['address_add_phone'], chat_id=message.chat.id, reply_markup=ForceReply())
+        except (ValidationError, ValueError):
+            bot.send_message(text='Неправильный формат', chat_id=message.chat.id)
+            bot.send_message(text=TEXTS['address_add_surname'], chat_id=message.chat.id, reply_markup=ForceReply())
     elif message.reply_to_message.text == TEXTS['address_add_phone']:
-        customer.current_address_creation_form.phone_number = message.text
-        customer.save()
-        bot.send_message(text=TEXTS['address_add_city'], chat_id=message.chat.id, reply_markup=ForceReply())
+        try:
+            customer.current_address_creation_form.phone_number = message.text
+            customer.save()
+            bot.send_message(text=TEXTS['address_add_city'], chat_id=message.chat.id, reply_markup=ForceReply())
+        except (ValidationError, ValueError):
+            bot.send_message(text='Неправильный формат. 0123456789', chat_id=message.chat.id)
+            bot.send_message(text=TEXTS['address_add_phone'], chat_id=message.chat.id, reply_markup=ForceReply())
     elif message.reply_to_message.text == TEXTS['address_add_city']:
-        customer.current_address_creation_form.city = message.text
-        customer.save()
-        bot.send_message(text=TEXTS['address_add_NP_number'], chat_id=message.chat.id, reply_markup=ForceReply())
+        try:
+            customer.current_address_creation_form.city = message.text
+            customer.save()
+            bot.send_message(text=TEXTS['address_add_NP_number'], chat_id=message.chat.id, reply_markup=ForceReply())
+        except (ValidationError, ValueError):
+            bot.send_message(text='Неправильный формат', chat_id=message.chat.id)
+            bot.send_message(text=TEXTS['address_add_city'], chat_id=message.chat.id, reply_markup=ForceReply())
     elif message.reply_to_message.text == TEXTS['address_add_NP_number']:
-        customer.current_address_creation_form.nova_poshta_branch = int(message.text)
-        customer.add_address(customer.current_address_creation_form)
-        del customer.current_address_creation_form
-        customer.save()
-        row = [InlineKeyboardButton(text=TEXTS['order_proceed'], callback_data='order_proceed')]
-        kb = bot.create_inline_keyboard(row)
-        bot.send_message(text=TEXTS['address_add_success'], chat_id=message.chat.id, reply_markup=kb)
+        try:
+            customer.current_address_creation_form.nova_poshta_branch = int(message.text)
+            customer.add_address(customer.current_address_creation_form)
+            del customer.current_address_creation_form
+            customer.save()
+            row = [InlineKeyboardButton(text=TEXTS['order_proceed'], callback_data='order_proceed')]
+            kb = bot.create_inline_keyboard(row)
+            bot.send_message(text=TEXTS['address_add_success'], chat_id=message.chat.id, reply_markup=kb)
+        except (ValidationError, ValueError):
+            bot.send_message(text='Неправильный формат. Только числа', chat_id=message.chat.id)
+            bot.send_message(text=TEXTS['address_add_NP_number'], chat_id=message.chat.id, reply_markup=ForceReply())
     else:
         bot.send_message(text=TEXTS['not_correct'], chat_id=message.chat.id)
 
