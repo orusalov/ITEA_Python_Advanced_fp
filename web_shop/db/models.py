@@ -177,8 +177,8 @@ class Customer(me.Document):
 
         return cart
 
-    def add_address(self):
-        self.address_list.append(self.current_address_creation_form)
+    def add_address(self, address: Address):
+        self.address_list.append(address)
 
     def archive(self):
         self.is_archived = True

@@ -35,10 +35,18 @@ class WebShopBot(TeleBot):
         else:
             self.send_message(**params)
 
-    def se_inline_keyboard(self, buttons: List[InlineKeyboardButton], chat_id: int, text: str, message_id: int = None,
-                           **kwargs):
+    def se_categories(self,
+                      buttons: List[InlineKeyboardButton],
+                      chat_id: int,
+                      text: str,
+                      back_button: InlineKeyboardButton=None,
+                      message_id: int = None,
+                      **kwargs):
 
-        kb = InlineKeyboardMarkup(row_width=2)
+        kb = InlineKeyboardMarkup(row_width=3)
+
+        if back_button:
+            kb.row(back_button)
 
         kb.add(*buttons)
 
@@ -186,7 +194,7 @@ class WebShopBot(TeleBot):
 
         return customer
 
-    def get_updated_reply_markup(self, customer):
+    def get_updated_keyboard(self, customer):
         buttons = []
         for key, value in START_KB.items():
             if key != 'cart':
@@ -228,18 +236,16 @@ class WebShopBot(TeleBot):
             callback_data=f"cart_item_modificationdel{item.product.id}"
         ))
 
-        kb = InlineKeyboardMarkup()
-        kb.row(*buttons)
+        kb = self.create_inline_keyboard(buttons)
 
         return kb
 
     def se_total_sum(self, cart, chat_id, is_edit=False):
-        kb = InlineKeyboardMarkup()
         buttons = [
             InlineKeyboardButton(text=TEXTS['cart_delete'], callback_data='cart_delete'),
             InlineKeyboardButton(text=TEXTS['order_proceed'], callback_data='order_proceed')
         ]
-        kb.row(*buttons)
+        kb = self.create_inline_keyboard(buttons)
 
         final_message = f"{TEXTS['total_cost']}: <b>{cart.total_cost}₴</b>"
         if not cart.items:
@@ -269,3 +275,18 @@ class WebShopBot(TeleBot):
 
     def get_category(self, **kwargs):
         return Category.objects.get(**kwargs)
+
+    def get_product(self, **kwargs):
+        return Product.objects.get(**kwargs)
+
+    def get_discount_products(self):
+        return Product.get_discount_products()
+
+    def get_default_address(self):
+        return Address(
+            first_name='dummy',
+            last_name='dummy',
+            city='dummy',
+            phone_number='0000000000',
+            nova_poshta_branch=1
+        )
