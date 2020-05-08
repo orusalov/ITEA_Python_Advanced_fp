@@ -42,6 +42,9 @@ customer = None
 
 def set_webhook():
     import time
+    from .check_activity import tl
+
+    tl.start()
 
     bot.remove_webhook()
     time.sleep(2)
