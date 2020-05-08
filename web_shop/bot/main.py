@@ -79,7 +79,9 @@ def cart_handler(message):
 
         bot.send_message(text=text, reply_markup=kb, chat_id=message.chat.id, parse_mode='html')
 
-    bot.se_total_sum(cart=cart, chat_id=message.chat.id)
+    sum_message_id = bot.se_total_sum(cart=cart, chat_id=message.chat.id)
+    customer.active_sum_message_id = sum_message_id
+    customer.save()
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('category'))
@@ -99,7 +101,7 @@ def category_handler(call):
         if category.subcategories:
             categories = category.subcategories
             callback_data = category.parent.id if category.parent else 'root'
-            back_button = InlineKeyboardButton(text=TEXTS['back'],callback_data=f'category{callback_data}')
+            back_button = InlineKeyboardButton(text=TEXTS['back'], callback_data=f'category{callback_data}')
             buttons = [InlineKeyboardButton(text=cat.title, callback_data=f'category{cat.id}') for cat in categories]
             message_id = call.message.message_id if call.message.text else None
             # previous message should be changed or deleted
@@ -164,7 +166,7 @@ def cart_modification_from_cart(call):
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                               text=text, reply_markup=reply_markup, parse_mode='html')
 
-        bot.se_total_sum(cart=cart, chat_id=call.message.chat.id, is_edit=True)
+        bot.se_total_sum(cart=cart, chat_id=call.message.chat.id, edit_message_id=customer.active_sum_message_id)
     elif decision_call.startswith('sub'):
         product = bot.get_product(id=decision_call[len("sub"):])
 
@@ -177,17 +179,17 @@ def cart_modification_from_cart(call):
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text=text, reply_markup=reply_markup, parse_mode='html')
 
-            bot.se_total_sum(cart=cart, chat_id=call.message.chat.id, is_edit=True)
+            bot.se_total_sum(cart=cart, chat_id=call.message.chat.id, edit_message_id=customer.active_sum_message_id)
         else:
             bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-            bot.se_total_sum(cart=cart, chat_id=call.message.chat.id, is_edit=True)
+            bot.se_total_sum(cart=cart, chat_id=call.message.chat.id, edit_message_id=customer.active_sum_message_id)
     elif decision_call.startswith('del'):
         product = bot.get_product(id=decision_call[len("del"):])
 
         cart.del_item(product=product)
 
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-        bot.se_total_sum(cart=cart, chat_id=call.message.chat.id, is_edit=True)
+        bot.se_total_sum(cart=cart, chat_id=call.message.chat.id, edit_message_id=customer.active_sum_message_id)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("next_product"))

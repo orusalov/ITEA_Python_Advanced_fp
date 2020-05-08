@@ -251,7 +251,7 @@ class WebShopBot(TeleBot):
             self,
             cart: Cart,
             chat_id: int,
-            is_edit: bool = False
+            edit_message_id: int = None
     ):
         buttons = [
             InlineKeyboardButton(text=TEXTS['cart_delete'], callback_data='cart_delete'),
@@ -264,11 +264,11 @@ class WebShopBot(TeleBot):
             final_message = TEXTS['no_cart_items']
             kb = None
 
-        if is_edit:
+        if edit_message_id:
             sum_message_id = self.edit_message_text(
                 text=final_message,
                 chat_id=chat_id,
-                message_id=cart._active_sum_message_id,
+                message_id=edit_message_id,
                 reply_markup=kb,
                 parse_mode='html'
             )
@@ -283,8 +283,6 @@ class WebShopBot(TeleBot):
                 disable_notification=True
             ).message_id
 
-            cart._active_sum_message_id = sum_message_id
-            cart.save()
             return sum_message_id
 
     def get_category(self, **kwargs):

@@ -167,9 +167,9 @@ class Customer(me.Document):
     current_backward_product_list = me.ListField()
 
     current_address_creation_form = me.EmbeddedDocumentField(Address)
+    active_sum_message_id = me.IntField()
 
     def get_or_create_current_cart(self) -> Tuple[bool, 'Cart']:
-        created = False
         try:
             cart = Cart.objects.get(customer=self, is_archived=False)
         except DoesNotExist:
@@ -218,8 +218,6 @@ class Cart(me.Document):
     items = me.EmbeddedDocumentListField(CartItem)
     is_archived = me.BooleanField(default=False)
     address = me.EmbeddedDocumentField(Address)
-
-    _active_sum_message_id = me.IntField()
 
     @property
     def total_cost(self):
