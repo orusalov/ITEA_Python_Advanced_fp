@@ -44,3 +44,12 @@ class WebShopBot(TeleBot):
             self.edit_message_text(**params)
         else:
             self.send_message(**params)
+
+    def create_inline_keyboard(self, *buttons: List[InlineKeyboardButton]):
+
+        kb = InlineKeyboardMarkup()
+
+        for row in buttons:
+            kb.row(*row)
+
+        return kb

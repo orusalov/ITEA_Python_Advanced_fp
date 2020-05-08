@@ -1,6 +1,6 @@
 START_KB = {
     'categories': '⬇️ Категории ⬇️',
-    'news': '📰 Новости 📰',
+    # 'news': '📰 Новости 📰',
     'discount_products': "🔥 Скидки 🔥",
     'cart': '🛒 Корзина{} 🛒'
 }
