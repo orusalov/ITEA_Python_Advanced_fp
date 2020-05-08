@@ -170,10 +170,10 @@ class ProductResource(Resource):
 
 class CustomerResource(Resource):
 
-    def get(self, id=None):
+    def get(self, username=None):
         if id:
             try:
-                customer = Customer.objects.get(id=id, is_archived=False)
+                customer = Customer.objects.get(username=username, is_archived=False)
             except (DoesNotExist, VE):
                 return 'No such customer'
 
