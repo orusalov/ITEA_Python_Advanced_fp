@@ -45,7 +45,11 @@ class CategoryResource(Resource):
             subcategories = data['subcategories']
             del data['subcategories']
 
-        category = Category.objects.create(**data)
+        try:
+            category = Category.objects.create(**data)
+        except VE as err:
+            return str(err)
+
         if parent:
             category.add_parent(parent)
 
@@ -141,7 +145,11 @@ class ProductResource(Resource):
         data['category'] = Category.objects.get(slug=data['category'])
         data['image'] = requests.get(data['image']).content
 
-        product = Product.objects.create(**data)
+        try:
+            product = Product.objects.create(**data)
+        except VE as err:
+            return str(err)
+
         return ProductSchema().dump(product)
 
     def put(self, slug):
