@@ -424,7 +424,7 @@ def address_form_handler(message):
             customer.save()
             bot.send_message(text=TEXTS['address_add_surname'], chat_id=message.chat.id, reply_markup=ForceReply())
         except (ValidationError, ValueError):
-            bot.send_message(text='Неправильный формат', chat_id=message.chat.id)
+            bot.send_message(text=f"{TEXTS['wrong_format']}", chat_id=message.chat.id)
             bot.send_message(text=TEXTS['address_add_name'], chat_id=message.chat.id, reply_markup=ForceReply())
 
     elif message.reply_to_message.text == TEXTS['address_add_surname']:
@@ -433,7 +433,7 @@ def address_form_handler(message):
             customer.save()
             bot.send_message(text=TEXTS['address_add_phone'], chat_id=message.chat.id, reply_markup=ForceReply())
         except (ValidationError, ValueError):
-            bot.send_message(text='Неправильный формат', chat_id=message.chat.id)
+            bot.send_message(text=f"{TEXTS['wrong_format']}", chat_id=message.chat.id)
             bot.send_message(text=TEXTS['address_add_surname'], chat_id=message.chat.id, reply_markup=ForceReply())
     elif message.reply_to_message.text == TEXTS['address_add_phone']:
         try:
@@ -441,7 +441,7 @@ def address_form_handler(message):
             customer.save()
             bot.send_message(text=TEXTS['address_add_city'], chat_id=message.chat.id, reply_markup=ForceReply())
         except (ValidationError, ValueError):
-            bot.send_message(text='Неправильный формат. 0123456789', chat_id=message.chat.id)
+            bot.send_message(text=f"{TEXTS['wrong_format']}. 0123456789", chat_id=message.chat.id)
             bot.send_message(text=TEXTS['address_add_phone'], chat_id=message.chat.id, reply_markup=ForceReply())
     elif message.reply_to_message.text == TEXTS['address_add_city']:
         try:
@@ -449,7 +449,7 @@ def address_form_handler(message):
             customer.save()
             bot.send_message(text=TEXTS['address_add_NP_number'], chat_id=message.chat.id, reply_markup=ForceReply())
         except (ValidationError, ValueError):
-            bot.send_message(text='Неправильный формат', chat_id=message.chat.id)
+            bot.send_message(text=f"{TEXTS['wrong_format']}", chat_id=message.chat.id)
             bot.send_message(text=TEXTS['address_add_city'], chat_id=message.chat.id, reply_markup=ForceReply())
     elif message.reply_to_message.text == TEXTS['address_add_NP_number']:
         try:
@@ -461,7 +461,7 @@ def address_form_handler(message):
             kb = bot.create_inline_keyboard(row)
             bot.send_message(text=TEXTS['address_add_success'], chat_id=message.chat.id, reply_markup=kb)
         except (ValidationError, ValueError):
-            bot.send_message(text='Неправильный формат. Только числа', chat_id=message.chat.id)
+            bot.send_message(text=f"{TEXTS['wrong_format']}. 1 - 100000", chat_id=message.chat.id)
             bot.send_message(text=TEXTS['address_add_NP_number'], chat_id=message.chat.id, reply_markup=ForceReply())
     else:
         bot.send_message(text=TEXTS['not_correct'], chat_id=message.chat.id)
