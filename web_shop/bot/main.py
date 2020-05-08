@@ -46,7 +46,7 @@ def start(message):
         first_name=message.from_user.first_name,
         last_name=message.from_user.last_name
     )
-    kb = bot.get_updated_keyboard(customer)
+    kb = bot.get_general_keyboard(customer)
 
     bot.send_message(reply_markup=kb,
                      chat_id=message.chat.id,
@@ -67,9 +67,9 @@ def categories_handler(message):
 
 @bot.message_handler(regexp="^" + START_KB['cart'].format('\(\d+\)') + "$")
 def cart_handler(message):
-    customer = bot.get_customer(message.from_user.id)
+    customer = bot.get_customer(user_id=message.from_user.id)
     cart = customer.get_or_create_current_cart()
-    kb = bot.get_updated_keyboard(customer)
+    kb = bot.get_general_keyboard(customer)
     start_message_text = TEXTS['start_cart_text'].format(cart.distinct_items)
     bot.send_message(chat_id=message.chat.id, text=start_message_text, reply_markup=kb)
 
@@ -102,18 +102,21 @@ def category_handler(call):
             back_button = InlineKeyboardButton(text=TEXTS['back'],callback_data=f'category{callback_data}')
             buttons = [InlineKeyboardButton(text=cat.title, callback_data=f'category{cat.id}') for cat in categories]
             message_id = call.message.message_id if call.message.text else None
+            # previous message should be changed or deleted
+            delete_message_id = call.message.message_id if not message_id else None
 
             bot.se_categories(
                 chat_id=call.message.chat.id,
                 text=category.title,
                 buttons=buttons,
                 back_button=back_button,
-                message_id=message_id
+                message_id=message_id,
+                delete_message_id=delete_message_id
             )
 
         elif category.is_leaf:
             if category.products:
-                customer = bot.get_customer(call.from_user.id)
+                customer = bot.get_customer(user_id=call.from_user.id)
 
                 customer.current_straight_product_list = []
                 customer.current_backward_product_list = []
@@ -145,7 +148,7 @@ def category_handler(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("cart_item_modification"))
 def cart_modification_from_cart(call):
-    customer = bot.get_customer(call.from_user.id)
+    customer = bot.get_customer(user_id=call.from_user.id)
     cart = customer.get_or_create_current_cart()
 
     decision_call = call.data[len("cart_item_modification"):]
@@ -189,7 +192,7 @@ def cart_modification_from_cart(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("next_product"))
 def next_product(call):
-    customer = bot.get_customer(call.from_user.id)
+    customer = bot.get_customer(user_id=call.from_user.id)
     if call.data != "next_product":
         product = bot.get_product(id=call.data[len("next_product"):])
     else:
@@ -209,7 +212,7 @@ def next_product(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == "previous_product")
 def prev_product(call):
-    customer = bot.get_customer(call.from_user.id)
+    customer = bot.get_customer(user_id=call.from_user.id)
     customer.current_straight_product_list.append(customer.current_backward_product_list.pop())
     product = customer.current_backward_product_list[-1]
     customer.save()
@@ -225,7 +228,7 @@ def prev_product(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == "all_products")
 def all_product(call):
-    customer = bot.get_customer(call.from_user.id)
+    customer = bot.get_customer(user_id=call.from_user.id)
     delete_message_id = call.message.message_id
     for product in (*customer.current_backward_product_list[::-1], *customer.current_straight_product_list[::-1]):
         bot.send_product_preview(
@@ -246,12 +249,12 @@ def detailed_product_view(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("to_cart"))
 def to_cart(call):
-    customer = bot.get_customer(call.from_user.id)
+    customer = bot.get_customer(user_id=call.from_user.id)
     product_id = call.data[len("to_cart"):]
     product = bot.get_product(id=product_id)
     customer.get_or_create_current_cart().add_item(product=product)
 
-    kb = bot.get_updated_keyboard(customer)
+    kb = bot.get_general_keyboard(customer)
     bot.send_message(text=TEXTS['added_to_cart'], chat_id=call.message.chat.id, reply_markup=kb)
 
 
@@ -267,10 +270,10 @@ def cart_delete(call):
         bot.send_message(text=TEXTS['cart_delete_approval'], chat_id=call.message.chat.id, reply_markup=kb)
     elif call.data == 'cart_delete_approval':
 
-        customer = bot.get_customer(call.from_user.id)
+        customer = bot.get_customer(user_id=call.from_user.id)
         customer.get_or_create_current_cart().del_all_items()
 
-        kb = bot.get_updated_keyboard(customer)
+        kb = bot.get_general_keyboard(customer)
         bot.send_message(text=TEXTS['cart_deleted'], chat_id=call.message.chat.id, reply_markup=kb)
 
     elif call.data == 'cart_delete_cancelation':
@@ -279,7 +282,7 @@ def cart_delete(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('address_delete'))
 def address_delete(call):
-    customer = bot.get_customer(call.from_user.id)
+    customer = bot.get_customer(user_id=call.from_user.id)
     if call.data.startswith('address_delete_index'):
         address_txt = call.message.text
 
@@ -365,7 +368,7 @@ def order_proceed(call):
 
         cart.archive()
 
-        kb = bot.get_updated_keyboard(customer)
+        kb = bot.get_general_keyboard(customer)
 
         bot.send_message(reply_markup=kb,
                          chat_id=call.message.chat.id,
@@ -382,7 +385,7 @@ def address_add_start_form(call):
 
 @bot.message_handler(func=lambda message: message.text == START_KB['discount_products'])
 def discount_products_handler(message):
-    customer = bot.get_customer(message.from_user.id)
+    customer = bot.get_customer(user_id=message.from_user.id)
     customer.current_straight_product_list = []
     customer.current_backward_product_list = []
 
@@ -438,7 +441,7 @@ def address_form_handler(message):
     else:
         bot.send_message(text=TEXTS['not_correct'], chat_id=message.chat.id)
 
-        kb = bot.get_updated_keyboard(customer)
+        kb = bot.get_general_keyboard(customer)
 
         bot.send_message(reply_markup=kb,
                          chat_id=message.chat.id,
@@ -467,7 +470,7 @@ def address_form_handler(message):
 )
 def default_handler(message):
     customer = bot.get_customer(user_id=message.from_user.id)
-    kb = bot.get_updated_keyboard(customer)
+    kb = bot.get_general_keyboard(customer)
 
     bot.send_message(reply_markup=kb,
                      chat_id=message.chat.id,

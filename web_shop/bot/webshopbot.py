@@ -20,27 +20,13 @@ class WebShopBot(TeleBot):
     def __init(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def se_reply_keyboard(self, buttons: List[KeyboardButton], chat_id: int = None, text: str = None,
-                          message_id: int = None,
-                          **kwargs):
-
-        kb = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-
-        kb.add(*buttons)
-
-        params = dict(chat_id=chat_id, text=text, reply_markup=kb, **kwargs)
-
-        if message_id:
-            self.edit_message_text(**params)
-        else:
-            self.send_message(**params)
-
     def se_categories(self,
                       buttons: List[InlineKeyboardButton],
                       chat_id: int,
                       text: str,
                       back_button: InlineKeyboardButton=None,
                       message_id: int = None,
+                      delete_message_id: int = None,
                       **kwargs):
 
         kb = InlineKeyboardMarkup(row_width=3)
@@ -57,6 +43,8 @@ class WebShopBot(TeleBot):
             self.edit_message_text(**params)
         else:
             self.send_message(**params)
+            if delete_message_id:
+                self.delete_message(chat_id=chat_id, message_id=delete_message_id)
 
     def create_inline_keyboard(self, *buttons: List[InlineKeyboardButton]):
 
@@ -189,12 +177,7 @@ class WebShopBot(TeleBot):
 
         return customer
 
-    def get_customer(self, user_id):
-        customer = Customer.objects.get(user_id=user_id)
-
-        return customer
-
-    def get_updated_keyboard(self, customer):
+    def get_general_keyboard(self, customer):
         buttons = []
         for key, value in START_KB.items():
             if key != 'cart':
@@ -253,13 +236,14 @@ class WebShopBot(TeleBot):
             kb = None
 
         if is_edit:
-            self.edit_message_text(
+            sum_message_id = self.edit_message_text(
                 text=final_message,
                 chat_id=chat_id,
                 message_id=cart._active_sum_message_id,
                 reply_markup=kb,
                 parse_mode='html'
             )
+            return sum_message_id
 
         else:
             sum_message_id = self.send_message(
@@ -272,12 +256,16 @@ class WebShopBot(TeleBot):
 
             cart._active_sum_message_id = sum_message_id
             cart.save()
+            return sum_message_id
 
     def get_category(self, **kwargs):
         return Category.objects.get(**kwargs)
 
     def get_product(self, **kwargs):
         return Product.objects.get(**kwargs)
+
+    def get_customer(self, **kwargs):
+        return Customer.objects.get(**kwargs)
 
     def get_discount_products(self):
         return Product.get_discount_products()
