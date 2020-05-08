@@ -5,10 +5,7 @@ from .resources import *
 app = Flask(__name__)
 api = Api(app)
 
-api.add_resource(CategoryResource, '/category', '/category/<slug>')
-api.add_resource(ProductResource, '/product', '/product/<slug>')
-api.add_resource(CustomerResource, '/customer', '/customer/<id>')
-api.add_resource(OrderResource, '/order', '/order/<id>')
-
-if __name__ == '__main__':
-    app.run(debug=True)
+api.add_resource(CategoryResource, 'api/category', 'api/category/<slug>')
+api.add_resource(ProductResource, 'api/product', 'api/product/<slug>')
+api.add_resource(CustomerResource, 'api/customer', 'api/customer/<id>')
+api.add_resource(OrderResource, 'api/order', 'api/order/<id>')
