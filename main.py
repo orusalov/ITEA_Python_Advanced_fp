@@ -5,6 +5,7 @@ from web_shop.bot.check_activity import tl
 if __name__ == '__main__':
 
     tl.start() # block=True
+    print('asdasdasd')
     if not DEBUG:
         set_webhook()
         app.run(port=PORT)
