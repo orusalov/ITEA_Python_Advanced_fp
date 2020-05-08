@@ -49,7 +49,7 @@ def set_webhook():
     bot.remove_webhook()
     time.sleep(2)
     bot.set_webhook(
-        url=f'https://{HOST}/{ENDPOINT}',
+        url=f'https://{HOST}/',# {ENDPOINT}
         certificate=open(CERTIFICATE, 'r')
     )
 
