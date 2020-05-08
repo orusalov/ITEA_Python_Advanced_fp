@@ -3,11 +3,10 @@ from telebot.types import (
     ReplyKeyboardMarkup,
     KeyboardButton,
     InlineKeyboardMarkup,
-    InlineKeyboardButton,
-    Update
+    InlineKeyboardButton
 )
 
-from ..db.models import Customer, Category, Product, Address
+from ..db.models import Customer, Category, Product, Address, CartItem, Cart
 from .keyboards import START_KB, TEXTS
 
 from typing import List
@@ -61,8 +60,14 @@ class WebShopBot(TeleBot):
                    categories]
         return buttons
 
-    def send_product_preview(self, product, chat_id, send_prev_button=False, send_next_button=False,
-                             send_all_products_button=True, delete_message_id=None):
+    def send_product_preview(
+            self,
+            product: Product,
+            chat_id: int,
+            send_prev_button: bool=False,
+            send_next_button: bool=False,
+            send_all_products_button: bool=True,
+            delete_message_id: int=None):
 
         return_to_category = product.category.parent.id if product.category.parent else 'root'
 
@@ -111,7 +116,12 @@ class WebShopBot(TeleBot):
         if delete_message_id:
             self.delete_message(chat_id=chat_id, message_id=delete_message_id)
 
-    def send_product_full_view(self, product, chat_id, delete_message_id):
+    def send_product_full_view(
+            self,
+            product: Product,
+            chat_id: int,
+            delete_message_id: int
+    ):
         first_row = [
             InlineKeyboardButton(text=TEXTS['back'],
                                  callback_data=f'next_product{product.id}'),
@@ -164,7 +174,13 @@ class WebShopBot(TeleBot):
         if delete_message_id:
             self.delete_message(chat_id=chat_id, message_id=delete_message_id)
 
-    def create_customer(self, user_id, username, first_name=None, last_name=None):
+    def create_customer(
+            self,
+            user_id: int,
+            username: str,
+            first_name: str=None,
+            last_name: str=None
+    ):
         try:
             customer = Customer.objects.get(user_id=user_id)
         except DoesNotExist:
@@ -177,7 +193,10 @@ class WebShopBot(TeleBot):
 
         return customer
 
-    def get_general_keyboard(self, customer):
+    def get_general_keyboard(
+            self,
+            customer: Customer
+    ):
         buttons = []
         for key, value in START_KB.items():
             if key != 'cart':
@@ -190,14 +209,20 @@ class WebShopBot(TeleBot):
 
         return kb
 
-    def get_cart_item_text(self, item):
+    def get_cart_item_text(
+            self,
+            item: CartItem
+    ):
         text = f'<b>{item.product.title}</b>, ' \
             f'{TEXTS["price"]}: <b>{item.product_price}₴</b>, ' \
             f'{TEXTS["quantity_short"]}: <b>{item.quantity}</b>, ' \
             f'{TEXTS["subsum"]}: <b>{item.item_subsum}₴</b>'
         return text
 
-    def get_cart_item_kb(self, item):
+    def get_cart_item_kb(
+            self,
+            item: CartItem
+    ):
         buttons = []
         buttons.append(InlineKeyboardButton(
             text=TEXTS['product_view'],
@@ -223,7 +248,12 @@ class WebShopBot(TeleBot):
 
         return kb
 
-    def se_total_sum(self, cart, chat_id, is_edit=False):
+    def se_total_sum(
+            self,
+            cart: Cart,
+            chat_id: int,
+            is_edit: bool=False
+    ):
         buttons = [
             InlineKeyboardButton(text=TEXTS['cart_delete'], callback_data='cart_delete'),
             InlineKeyboardButton(text=TEXTS['order_proceed'], callback_data='order_proceed')
