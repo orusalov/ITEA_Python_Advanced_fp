@@ -8,7 +8,6 @@ from telebot.types import (
 
 from ..db.models import Customer, Category, Product, Address, CartItem, Cart
 from .keyboards import START_KB, TEXTS
-
 from typing import List
 from copy import copy
 from mongoengine import DoesNotExist
@@ -23,7 +22,7 @@ class WebShopBot(TeleBot):
                       buttons: List[InlineKeyboardButton],
                       chat_id: int,
                       text: str,
-                      back_button: InlineKeyboardButton=None,
+                      back_button: InlineKeyboardButton = None,
                       message_id: int = None,
                       delete_message_id: int = None,
                       **kwargs):
@@ -64,10 +63,10 @@ class WebShopBot(TeleBot):
             self,
             product: Product,
             chat_id: int,
-            send_prev_button: bool=False,
-            send_next_button: bool=False,
-            send_all_products_button: bool=True,
-            delete_message_id: int=None):
+            send_prev_button: bool = False,
+            send_next_button: bool = False,
+            send_all_products_button: bool = True,
+            delete_message_id: int = None):
 
         return_to_category = product.category.parent.id if product.category.parent else 'root'
 
@@ -178,8 +177,8 @@ class WebShopBot(TeleBot):
             self,
             user_id: int,
             username: str,
-            first_name: str=None,
-            last_name: str=None
+            first_name: str = None,
+            last_name: str = None
     ):
         try:
             customer = Customer.objects.get(user_id=user_id)
@@ -252,7 +251,7 @@ class WebShopBot(TeleBot):
             self,
             cart: Cart,
             chat_id: int,
-            is_edit: bool=False
+            is_edit: bool = False
     ):
         buttons = [
             InlineKeyboardButton(text=TEXTS['cart_delete'], callback_data='cart_delete'),
