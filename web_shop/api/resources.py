@@ -179,7 +179,7 @@ class ProductResource(Resource):
 class CustomerResource(Resource):
 
     def get(self, username=None):
-        if id:
+        if username:
             try:
                 customer = Customer.objects.get(username=username, is_archived=False)
             except (DoesNotExist, VE):
