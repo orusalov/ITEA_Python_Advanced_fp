@@ -190,11 +190,11 @@ class CustomerResource(Resource):
             customers = Customer.objects(is_archived=False)
             return CustomerSchema().dump(customers, many=True)
 
-    def delete(self, id):
-        customer = Customer.objects.get(id=id)
+    def delete(self, username):
+        customer = Customer.objects.get(username=username)
         customer.archive()
 
-        return f'Archived {id}'
+        return f'Archived {username}'
 
 
 class OrderResource(Resource):
