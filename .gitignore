@@ -3,3 +3,4 @@ venv*
 db_config.py
 local_config.py
 .idea
+.check
